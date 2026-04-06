@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  neo4j:
+    image: neo4j:5
+    ports:
+      - "7474:7474"   # Neo4j Browser (vizuelni interfejs)
+      - "7687:7687"   # Bolt protokol (za konekciju iz koda)
+    environment:
+      - NEO4J_AUTH=neo4j/miladraga
+    volumes:
+      - neo4j_data:/data
+
+volumes:
+  neo4j_data:
