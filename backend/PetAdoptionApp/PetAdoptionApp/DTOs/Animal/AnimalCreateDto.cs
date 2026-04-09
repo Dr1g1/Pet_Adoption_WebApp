@@ -1,10 +1,8 @@
 ﻿using PetAdoptionApp.Common;
-
-namespace PetAdoptionApp.Models
+namespace PetAdoptionApp.DTOs.Animal
 {
-    public class Animal
+    public class AnimalCreateDto
     {
-        public string id { get; set; }
         public string name { get; set; }
         public string species { get; set; }
         public string breed { get; set; }
@@ -16,12 +14,10 @@ namespace PetAdoptionApp.Models
         public Boolean isGoodWithKids { get; set; }
         public Boolean isGoodWithPets { get; set; }
         public string? description { get; set; }
-        public Boolean isAdopted { get; set; }
         public DateTime arrivedAt { get; set; }
         public List<string>? images { get; set; }
-        public List<MedicalRecord>? medicalRecords { get; set; }
-        public List<Volunteer> caretakers { get; set; }
-        public Shelter shelter { get; set; }
-        public Animal related { get; set; }
+        //ne prosledjujemo ceo shelter ili animal objekat, samo id.
+        public string shelterId { get; set; }
+        public string? relatedAnimalId { get; set; }
     }
 }

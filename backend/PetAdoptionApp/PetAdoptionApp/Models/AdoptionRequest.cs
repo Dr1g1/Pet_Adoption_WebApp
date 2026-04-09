@@ -1,12 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using PetAdoptionApp.Common;
+using Microsoft.AspNetCore.Mvc;
 
 namespace PetAdoptionApp.Models
 {
-    public enum Status { Pending, Approved, Rejected }
     public class AdoptionRequest
     {
         public string id { get; set; }
-        public Status status { get; set; }
+        public Enums.Status status { get; set; }
         public DateTime createdAt { get; set; }
         public DateTime? updatedAt { get; set; }
         public string? message { get; set; }

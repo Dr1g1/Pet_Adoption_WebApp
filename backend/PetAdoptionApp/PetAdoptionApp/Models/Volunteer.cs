@@ -1,6 +1,6 @@
-﻿namespace PetAdoptionApp.Models
+﻿using PetAdoptionApp.Common;
+namespace PetAdoptionApp.Models
 {
-    public enum Days { Monday = 0, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday };
     public class Volunteer
     {
         public string id { get; set; }
@@ -15,7 +15,7 @@
         public Boolean isActive { get; set; }
         public float? rating { get; set; }
         public string[]? skills { get; set; }
-        public Days[] availableDays { get; set; }
+        public Enums.Days[] availableDays { get; set; }
         public DateTime joinedAd { get; set; }
         public Shelter shelter { get; set; }
     }
