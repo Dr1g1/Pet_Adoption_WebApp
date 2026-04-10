@@ -1,5 +1,4 @@
-﻿using PetAdoptionApp.Common;
-
+﻿
 namespace PetAdoptionApp.DTOs.Animal
 {
     public class AnimalDetailResponseDto
@@ -9,10 +8,10 @@ namespace PetAdoptionApp.DTOs.Animal
         public string species { get; set; }
         public string breed { get; set; }
         public int? age { get; set; }
-        public Enums.Gender gender { get; set; }
-        public Enums.Size size { get; set; }
-        public Boolean isVaccinated { get; set; }
-        public Boolean isSterilized { get; set; }
+        public string gender { get; set; }
+        public string size { get; set; }
+        public bool isVaccinated { get; set; }
+        public bool isSterilized { get; set; }
         public string? description { get; set; }   
         public DateTime arrivedAt { get; set; }
         public List<string>? images { get; set; } //samo prva slika iz liste.

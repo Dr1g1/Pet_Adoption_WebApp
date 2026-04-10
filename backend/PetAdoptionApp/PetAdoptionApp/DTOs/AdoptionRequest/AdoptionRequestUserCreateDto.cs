@@ -1,6 +1,6 @@
 ﻿namespace PetAdoptionApp.DTOs.AdoptionRequest
 {
-    public class AdoptionRequestCreateDto
+    public class AdoptionRequestUserCreateDto
     {
         //dto za korisnika koji salje zhatev za usvajanjem neke zivotinje.
         public string animalId { get; set; }
