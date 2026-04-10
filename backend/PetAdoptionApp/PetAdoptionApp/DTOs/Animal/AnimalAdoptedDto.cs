@@ -2,6 +2,8 @@
 {
     public class AnimalAdoptedDto
     {
-        public Boolean isAdopted { get; set; }
+        public bool IsAdopted { get; set; }
+        public string AdoptedByUserId { get; set; }
+        public DateTime? AdoptionDate { get; set; }
     }
 }
