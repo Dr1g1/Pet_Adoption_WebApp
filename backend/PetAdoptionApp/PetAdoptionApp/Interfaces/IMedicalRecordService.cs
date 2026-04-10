@@ -5,6 +5,6 @@ namespace PetAdoptionApp.Interfaces
     {
         Task<bool> DeleteRecordAsync(string recordId);
         Task<DTOs.MedicalRecord.MedicalRecordResponseDto> CreateMedicalRecord(string animalId, DTOs.MedicalRecord.MedicalRecordCreateDto dto)
-        Task<IEnumerable<DTOs.MedicalRecord.MedicalRecordResponseDto>> ReturnMRForAnimal(string animalId);
+        Task<IEnumerable<DTOs.MedicalRecord.MedicalRecordResponseDto>> GetMedicalRecordsForAnimal(string animalId);
     }
 }

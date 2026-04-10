@@ -1,14 +1,14 @@
-﻿using PetAdoptionApp.DTOs;
+﻿using PetAdoptionApp.DTOs.Animal;
 namespace PetAdoptionApp.Interfaces
 {
     public interface IAnimalService
     {
-        Task<DTOs.Animal.AnimalDetailResponseDto> CreateAnimalAsync(DTOs.Animal.AnimalCreateDto dto);
+        Task<AnimalDetailResponseDto> CreateAnimalAsync(AnimalCreateDto dto);
         Task<bool> DeleteAnimalAsync(string animalId);
-        Task<DTOs.Animal.AnimalResponseDto> ReturnAllAnimals(string shelterId); //sve zivotinje u azilu (koje nisu usvojene).
-        Task<DTOs.Animal.AnimalResponseDto> ReturnAnimalId(string animalId);
-        Task<bool> AddCaretakerAsync(string animalId, DTOs.Animal.AnimalAddCaretakerDto dto);
-        Task<bool> UpdateAnimalImages(string animalId, DTOs.Animal.AnimalUpdateImagesDto dto);
-        Task<bool> MarkAsAdoptedAsync(string animalId, DTOs.Animal.AnimalAdoptedDto dto);
+        Task<AnimalResponseDto> ReturnAllAnimals(string shelterId); //sve zivotinje u azilu (koje nisu usvojene).
+        Task<AnimalResponseDto> ReturnAnimalId(string animalId);
+        Task<bool> AddCaretakerAsync(string animalId, AnimalAddCaretakerDto dto);
+        Task<bool> UpdateAnimalImages(string animalId, AnimalUpdateImagesDto dto);
+        Task<bool> MarkAsAdoptedAsync(string animalId, AnimalAdoptedDto dto);
     }
 }

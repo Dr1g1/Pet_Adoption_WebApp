@@ -1,4 +1,5 @@
-﻿
+﻿using PetAdoptionApp.DTOs.Shelter;
+using PetAdoptionApp.DTOs.MedicalRecord;
 namespace PetAdoptionApp.DTOs.Animal
 {
     public class AnimalDetailResponseDto
@@ -14,10 +15,10 @@ namespace PetAdoptionApp.DTOs.Animal
         public bool isSterilized { get; set; }
         public string? description { get; set; }   
         public DateTime arrivedAt { get; set; }
-        public List<string>? images { get; set; } //samo prva slika iz liste.
-        // ovde mozda stavimo shelter response dto public string shelterId { get; set; }
+        public List<string>? images { get; set; } 
+        public ShelterDto Shelter { get; set; }
         public AnimalResponseDto? relative { get; set; }
-        public List<MedicalRecord.MedicalRecordResponseDto>? medRecords { get; set; }
+        public List<MedicalRecordResponseDto>? medRecords { get; set; }
 
     }
 }

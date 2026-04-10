@@ -11,10 +11,10 @@ namespace PetAdoptionApp.Models
         public int? age { get; set; }
         public Enums.Gender gender { get; set; }
         public Enums.Size size { get; set; }
-        public Boolean isVaccinated { get; set; }
-        public Boolean isSterilized { get; set; }
-        public Boolean isGoodWithKids { get; set; }
-        public Boolean isGoodWithPets { get; set; }
+        public  Enums.AnimalBoolean isVaccinated { get; set; }
+        public  Enums.AnimalBoolean isSterilized { get; set; }
+        public Enums.AnimalBoolean isGoodWithKids { get; set; }
+        public Enums.AnimalBoolean isGoodWithPets { get; set; }
         public string? description { get; set; }
         public Boolean isAdopted { get; set; }
         public DateTime arrivedAt { get; set; }
