@@ -18,6 +18,7 @@ namespace PetAdoptionApp.DTOs.Animal
         public List<string>? images { get; set; }
         //ne prosledjujemo ceo shelter ili animal objekat, samo id.
         public string shelterId { get; set; }
+        public string caretakerId { get; set; } //moramo kad pravimo zivotinju odmah da dodamo caretaker-a.
         public string? relatedAnimalId { get; set; }
     }
 }

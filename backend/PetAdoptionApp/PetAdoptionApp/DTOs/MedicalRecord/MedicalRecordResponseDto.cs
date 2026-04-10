@@ -1,6 +1,6 @@
-﻿namespace PetAdoptionApp.Models
+﻿namespace PetAdoptionApp.DTOs.MedicalRecord
 {
-    public class MedicalRecord
+    public class MedicalRecordResponseDto
     {
         public string id { get; set; }
         public string description { get; set; }

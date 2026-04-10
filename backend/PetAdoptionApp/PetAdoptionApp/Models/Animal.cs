@@ -22,6 +22,6 @@ namespace PetAdoptionApp.Models
         public List<MedicalRecord>? medicalRecords { get; set; }
         public List<Volunteer> caretakers { get; set; }
         public Shelter shelter { get; set; }
-        public Animal related { get; set; }
+        public Animal? related { get; set; }
     }
 }
