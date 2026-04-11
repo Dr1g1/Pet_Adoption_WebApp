@@ -1,12 +1,16 @@
-﻿using PetAdoptionApp.DTOs;
+﻿using PetAdoptionApp.DTOs.AdoptionRequest;
 namespace PetAdoptionApp.Interfaces
 {
     public interface IAdoptionRequestService
-    {
-        Task<DTOs.AdoptionRequest.AdoptionRequestReturnDto> CreateAdoptionRequestAsync(DTOs.AdoptionRequest.AdoptionRequestUserCreateDto dto);
-        Task<bool> AdoptionRequestActionAsync(DTOs.AdoptionRequest.AdoptionRequestActionDto dto);
-        Task<IEnumerable<DTOs.AdoptionRequest.AdoptionRequestReturnDto>> GetPendingRequests(); //vratiti samo pending zaheteve
-        Task<IEnumerable<DTOs.AdoptionRequest.AdoptionRequestReturnDto>> GetRequestsForAnimal(string animalId);
-        Task<bool> CancelRequestAsync(string requestId, string userId);
+    {       
+        Task<AdoptionRequestUserResponseDto> CreateAdoptionRequestAsync(string userId, AdoptionRequestUserCreateDto dto);
+        //Task<bool> AdoptionRequestActionAsync(AdoptionRequestActionDto dto);
+        //treba da se dodaju funkcije za odbijanje i prihvatanje adoption requesta
+        //ove funkcije su vidljive samo VOLONTERIMA koji rade u azilu.
+        Task<bool> RejectRequestAsync(AdoptionRequestActionDto dto, string shelterId);
+        Task<bool> ApprovedRequestAsync(AdoptionRequestActionDto dto, string shelterId);
+        Task<IEnumerable<AdoptionRequestReturnDto>> GetPendingRequests(string shelterId); //vratiti samo pending zaheteve
+        Task<IEnumerable<AdoptionRequestReturnDto>> GetRequestsForAnimal(string animalId);
+        Task<bool> DeleteRequestAsync(string requestId, string userId);
     }
 }

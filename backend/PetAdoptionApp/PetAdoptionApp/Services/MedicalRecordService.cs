@@ -53,8 +53,9 @@ namespace PetAdoptionApp.Services
             //izbrisi jedan record.
             var query = @"
                 MATCH (mr: MedicalRecord {id: $recordId})
+                WITH count(mr) > 0 AS exists
                 DETACH DELETE mr
-                RETURN count(mr) > 0 AS exists
+                RETURN exists
                 ";
             await using var session = _driver.AsyncSession();
             return await session.ExecuteWriteAsync(async x =>
