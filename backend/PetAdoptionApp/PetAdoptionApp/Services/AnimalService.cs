@@ -1,7 +1,10 @@
-﻿using PetAdoptionApp.Interfaces;
-using Neo4j.Driver;
+﻿using Neo4j.Driver;
+using PetAdoptionApp.Common;
 using PetAdoptionApp.DTOs.Animal;
+using PetAdoptionApp.DTOs.MedicalRecord;
+using PetAdoptionApp.Interfaces;
 using PetAdoptionApp.Models;
+
 namespace PetAdoptionApp.Services
 {
     public class AnimalService : IAnimalService
@@ -12,11 +15,29 @@ namespace PetAdoptionApp.Services
             _driver = driver;
         }
 
-         public Task<bool> AddCaretakerAsync(string animalId, AnimalAddCaretakerDto dto)
+        public async Task<bool> AddCaretakerAsync(string animalId, AnimalAddCaretakerDto dto)
         {
-            throw new NotImplementedException();
-        }
+            var query = @"
+                    MATCH (a: Animal {id: $animalId})
+                    MATCH (v: Volunteer {id: $volunteerId})
+                    MERGE (a)-[:CARED_BY]->(v)
+                    RETURN count(a) > 0 AS caredBy
+                    ";
+            await using var session = _driver.AsyncSession();
+            return await session.ExecuteWriteAsync(async x =>
+            {
+                var pointer = await x.RunAsync(query, new
+                {
+                    animalId,
+                    volunteerId = dto.caretakerId
+                });
+                var result = await pointer.SingleAsync();
 
+                return result["caredBy"].As<bool>(); //nisam sigurna da moze ovako, treba da se proveri.
+            });
+
+        }
+     
         public async Task<AnimalDetailResponseDto> CreateAnimalAsync(AnimalCreateDto dto)
         {
            var newId = Guid.NewGuid().ToString();
@@ -39,8 +60,8 @@ namespace PetAdoptionApp.Services
                     isAdopted: false,
                     arrivedAt: datetime($arrivedAt),
                 })
-                CREATE (a)-[HOUSED_IN]->(s)
-                CREATE (a)-[CARED_BY]->(v)
+                CREATE (a)-[:HOUSED_IN]->(s)
+                CREATE (a)-[:CARED_BY]->(v)
                 RETURN a, s.id as shelterId, v.id as caretakerId
                 ";
             var parameters = new
@@ -66,39 +87,144 @@ namespace PetAdoptionApp.Services
             {
                 var cursor = await res.RunAsync(query, parameters);
                 var record = await cursor.SingleAsync();
-                var node = record["a"].As<INode>();
-                return new AnimalDetailResponseDto
-                {
-                    id = node.Properties["id"].As<string>(),
-                    name = node.Properties["name"].As<string>(),
-
-                };
+                return MapNodeToAnimalDetailResponse(record["a"].As<INode>());
             });
         }
 
-        public Task<bool> DeleteAnimalAsync(string animalId)
+        public async Task<bool> DeleteAnimalAsync(string animalId)
         {
-            throw new NotImplementedException();
+            //to do: razmisli o tome sta se brise, a sta treba da se sacuva od podataka kad se obrise zivotinja.
+            var query = @"
+                MATCH (a: Animal {id: $animalId})
+                DETACH DELETE a
+                ";
+            await using var session = _driver.AsyncSession();
+            var exists = await session.ExecuteWriteAsync(async x =>
+            {
+                //rezultat upita imenujemo kao exists.
+                var pointer = await x.RunAsync(
+                    "MATCH (a: Animal {id: $animalId})" +
+                    "RETURN count(a) > 0 AS exists",
+                    new { animalId });
+                var result = await pointer.SingleAsync();
+                return result["exists"].As<bool>();
+            });
+            if (!exists) return false;
+            await session.ExecuteWriteAsync(async x =>
+            {
+                await x.RunAsync(query, new { animalId });
+            });
+            return true;
         }
 
-        public Task<bool> MarkAsAdoptedAsync(string animalId, AnimalAdoptedDto dto)
+        public async Task<bool> MarkAsAdoptedAsync(string animalId, AnimalAdoptedDto dto)
         {
-            throw new NotImplementedException();
+            var query = @"
+                MATCH (a: Animal {id: $animalId})
+                SET a.isAdopted = true
+                RETURN count(a)>0 AS adopted
+                ";
+            await using var session = _driver.AsyncSession();
+            return await session.ExecuteWriteAsync(async x =>
+            {
+                var pointer = await x.RunAsync(query, new { animalId });
+                var result = await pointer.SingleAsync();
+                return result["adopted"].As<bool>();
+            });
         }
 
-        public Task<AnimalResponseDto> ReturnAllAnimals(string shelterId)
+        public async Task<IEnumerable<AnimalResponseDto>> ReturnAllAnimals(string shelterId)
         {
-            throw new NotImplementedException();
+            await using var session = _driver.AsyncSession();
+            return await session.ExecuteReadAsync(async x =>
+            {
+                var query = @"
+                    MATCH (s: Shelter {id: $shelterId})<-[:HOUSED_IN]-(a:Animal)
+                    WHERE a.isAdopted = false
+                    RETURN a
+                    ";
+                var cursor = await x.RunAsync(query, new { shelterId });
+                var animals = new List<AnimalResponseDto>();
+                while (await cursor.FetchAsync())
+                    animals.Add(MapNodeToAnimalResponse(cursor.Current["a"].As<INode>()));
+                return animals;
+            }); 
         }
 
-        public Task<AnimalResponseDto> ReturnAnimalId(string animalId)
+        public async Task<AnimalResponseDto> ReturnAnimalId(string animalId)
         {
-            throw new NotImplementedException();
+            await using var session = _driver.AsyncSession();
+            return await session.ExecuteReadAsync(async x =>
+            {
+                var query = @"
+                    MATCH (a: Animal {id = $animalId})
+                    RETURN a
+                    ";
+                var cursor = await x.RunAsync(query, new { animalId });
+                var record = await cursor.SingleAsync();
+                return MapNodeToAnimalResponse(record["a"].As<INode>());
+            });
         }
 
-        public Task<bool> UpdateAnimalImages(string animalId, AnimalUpdateImagesDto dto)
+        public async Task<bool> UpdateAnimalImages(string animalId, AnimalUpdateImagesDto dto)
         {
-            throw new NotImplementedException();
+            //proveriti implementaciju.
+            if (dto.Images.Count > 5)
+                return false;
+            var query = @"
+                MATCH (a: Animal {id: $animalId})
+                SET a.images = $images
+                RETURN count(a) > 0 AS imagesUpdate
+                ";
+            await using var session = _driver.AsyncSession();
+            return await session.ExecuteWriteAsync(async x =>
+            {
+                var pointer = await x.RunAsync(query, new { animalId, images = dto.Images });
+
+                var result = await pointer.SingleAsync();
+                return result["imagesUpdate"].As<bool>();
+            });
+        }
+
+        //pomocne funkcije:
+        private AnimalResponseDto MapNodeToAnimalResponse(INode node)
+        {
+            var allImages = node.Properties.ContainsKey("images") ? node.Properties["images"].As<List<string>>() :
+               new List<string>();
+            string firstImage = allImages.Count > 0 ? allImages[0] : null;
+
+            return new AnimalResponseDto
+            {
+                id = node.Properties["id"].As<string>(),
+                breed = node.Properties["breed"].As<string>(),
+                name = node.Properties["name"].As<string>(),
+                gender = Enum.Parse<Enums.Gender>(node.Properties["gender"].As<string>()),
+                age = node.Properties.ContainsKey("age") ? node.Properties["age"].As<int>() : null,
+                isVaccinated = Enum.Parse<Enums.AnimalBoolean>(node.Properties["isVaccinated"].As<string>()),
+                isSterilized = Enum.Parse<Enums.AnimalBoolean>(node.Properties["isSterilized"].As<string>()),
+                primaryImgUrl = firstImage
+            };
+        }
+
+        private AnimalDetailResponseDto MapNodeToAnimalDetailResponse(INode node)
+        {
+            return new AnimalDetailResponseDto
+            {
+                id = node.Properties["id"].As<string>(),
+                name = node.Properties["name"].As<string>(),
+                species = node.Properties["species"].As<string>(),
+                breed = node.Properties["breed"].As<string>(),
+                age = node.Properties.ContainsKey("age") ? node.Properties["age"].As<int>() : null,
+
+                gender = Enum.Parse<Enums.Gender>(node.Properties["gender"].As<string>()),
+                size = Enum.Parse<Enums.Size>(node.Properties["size"].As<string>()),
+
+                isVaccinated = Enum.Parse<Enums.AnimalBoolean>(node.Properties["isVaccinated"].As<string>()),
+                isSterilized = Enum.Parse<Enums.AnimalBoolean>(node.Properties["isSterilized"].As<string>()),
+                description = node.Properties["description"].As<string>(),
+                arrivedAt = DateTime.Parse(node.Properties["arrivedAt"].As<string>()),
+                images = node.Properties.ContainsKey("images") ? node.Properties["images"].As<List<string>>() : new List<string>(),
+            };
         }
     }
 }

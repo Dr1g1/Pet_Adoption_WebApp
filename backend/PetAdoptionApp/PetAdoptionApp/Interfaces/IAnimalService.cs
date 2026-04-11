@@ -5,7 +5,7 @@ namespace PetAdoptionApp.Interfaces
     {
         Task<AnimalDetailResponseDto> CreateAnimalAsync(AnimalCreateDto dto);
         Task<bool> DeleteAnimalAsync(string animalId);
-        Task<AnimalResponseDto> ReturnAllAnimals(string shelterId); //sve zivotinje u azilu (koje nisu usvojene).
+        Task<IEnumerable<AnimalResponseDto>> ReturnAllAnimals(string shelterId); //sve zivotinje u azilu (koje nisu usvojene).
         Task<AnimalResponseDto> ReturnAnimalId(string animalId);
         Task<bool> AddCaretakerAsync(string animalId, AnimalAddCaretakerDto dto);
         Task<bool> UpdateAnimalImages(string animalId, AnimalUpdateImagesDto dto);
