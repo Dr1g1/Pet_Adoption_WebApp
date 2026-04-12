@@ -25,10 +25,7 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAnimalService, AnimalService>();
 builder.Services.AddScoped<IAdoptionRequestService, AdoptionRequestService>();
 builder.Services.AddScoped<IMedicalRecordService, MedicalRecordService>();
-<<<<<<< HEAD
 
-=======
->>>>>>> 57fc7a2563917c64d9641b45ccd1bd8f76f3006e
 
 builder.Services.AddControllers().AddJsonOptions(
     options =>
@@ -43,8 +40,6 @@ builder.Services.AddSwaggerGen();
 var imagesPath = Path.Combine(builder.Environment.ContentRootPath, "images");
 Directory.CreateDirectory(imagesPath); // ne baca gresku ako  postoji
 
-<<<<<<< HEAD
-=======
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll",
@@ -53,7 +48,6 @@ builder.Services.AddCors(options =>
                             .AllowAnyHeader());
 });
 
->>>>>>> 57fc7a2563917c64d9641b45ccd1bd8f76f3006e
 //builder.Services.AddOpenApi();
 var app = builder.Build();
 

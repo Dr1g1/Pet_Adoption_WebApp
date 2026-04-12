@@ -67,14 +67,6 @@ namespace PetAdoptionApp.Controllers
             return Ok(result);
         }
 
-<<<<<<< HEAD
-        [HttpPatch("{animalId}/related")]
-        public async Task<IActionResult> AddRelatedAnimal(string animalId, [FromBody] AnimalAddRelativeDto dto)
-        {
-            var result = await _animalService.AddRelativeToAnimal(animalId, dto);
-            if (!result) return NotFound("Zivotinja sa ovom identifikacijom nije pronadjena");
-            return Ok(result);
-=======
         [HttpPost("{animalId}/addimage")]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> AddImage(string animalId, IFormFile file)
@@ -105,7 +97,14 @@ namespace PetAdoptionApp.Controllers
         {
             var result = await _animalService.RemoveImageAsync(animalId, fileName);
             return result ? NoContent() : NotFound();
->>>>>>> 57fc7a2563917c64d9641b45ccd1bd8f76f3006e
+        }
+
+        [HttpPatch("{animalId}/related")]
+        public async Task<IActionResult> AddRelatedAnimal(string animalId, [FromBody] AnimalAddRelativeDto dto)
+        {
+            var result = await _animalService.AddRelativeToAnimal(animalId, dto);
+            if (!result) return NotFound("Zivotinja sa ovom identifikacijom nije pronadjena");
+            return Ok(result);
         }
     }
 }

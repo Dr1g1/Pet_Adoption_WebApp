@@ -187,27 +187,6 @@ namespace PetAdoptionApp.Services
             });
         }
 
-<<<<<<< HEAD
-        public async Task<bool> AddRelativeToAnimal(string animalId, AnimalAddRelativeDto dto)
-        {
-            var query = @"
-                MATCH (a:Animal {id:$animalId})
-                MATCH (related:Animal {id:$relativeId})
-                MERGE (a)-[:RELATED]->(related)
-                RETURN count(a) > 0 AS exists";
-            await using var session = _driver.AsyncSession();
-            return await session.ExecuteWriteAsync(async x =>
-            {
-                var pointer = await x.RunAsync(query, new
-                {
-                    animalId,
-                    relatedId = dto.RelativeId
-                });
-
-                var result = await pointer.SingleAsync();
-                return result["exists"].As<bool>();
-            });
-=======
         public async Task<string?> AddImageAsync(string animalId, IFormFile file)
         {
             // provera koliko slika vec ima:
@@ -281,7 +260,27 @@ namespace PetAdoptionApp.Services
                 File.Delete(filePath);
 
             return true;
->>>>>>> 57fc7a2563917c64d9641b45ccd1bd8f76f3006e
+        }
+
+        public async Task<bool> AddRelativeToAnimal(string animalId, AnimalAddRelativeDto dto)
+        {
+            var query = @"
+                MATCH (a:Animal {id:$animalId})
+                MATCH (related:Animal {id:$relativeId})
+                MERGE (a)-[:RELATED]->(related)
+                RETURN count(a) > 0 AS exists";
+            await using var session = _driver.AsyncSession();
+            return await session.ExecuteWriteAsync(async x =>
+            {
+                var pointer = await x.RunAsync(query, new
+                {
+                    animalId,
+                    relatedId = dto.RelativeId
+                });
+
+                var result = await pointer.SingleAsync();
+                return result["exists"].As<bool>();
+            });
         }
 
         //pomocne funkcije:

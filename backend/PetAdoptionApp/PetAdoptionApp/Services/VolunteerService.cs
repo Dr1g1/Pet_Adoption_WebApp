@@ -67,11 +67,7 @@ namespace PetAdoptionApp.Services
             await using var session = _driver.AsyncSession();
             return await session.ExecuteReadAsync(async tx =>
             {
-<<<<<<< HEAD
-                var cursor = await tx.RunAsync(query, new { id = Id });
-=======
                 var cursor = await tx.RunAsync(query, new { id });
->>>>>>> 57fc7a2563917c64d9641b45ccd1bd8f76f3006e
                 if (!await cursor.FetchAsync())
                     return null;
                 var record = cursor.Current;
@@ -277,16 +273,9 @@ namespace PetAdoptionApp.Services
             Rating = node.Properties.ContainsKey("rating")
                 ? node["rating"].As<float?>() : null,
             Skills = node.Properties.ContainsKey("skills")
-<<<<<<< HEAD
-                ? node["skills"].As<List<object>>().Select(x => x.ToString()).ToArray() : null,
-            
-            AvailableDays = node.Properties.ContainsKey("availableDays")
-                ? node["availableDays"].As<List<object>>().Select(x => x.ToString()).ToArray() : null,
-=======
                 ? node["skills"].As<List<object>>().Select(x => x.ToString()!).ToArray() : null,
             AvailableDays = node.Properties.ContainsKey("availableDays")
                 ? node["availableDays"].As<List<object>>().Select(x => x.ToString()!).ToArray() : null,
->>>>>>> 57fc7a2563917c64d9641b45ccd1bd8f76f3006e
             JoinedAt = node.Properties.ContainsKey("joinedAt")
                 ? DateTime.Parse(node["joinedAt"].As<string>()) : null,
             Shelter = shelterNode == null ? null : new ShelterDto

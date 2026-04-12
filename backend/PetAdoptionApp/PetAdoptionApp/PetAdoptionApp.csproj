@@ -9,10 +9,6 @@
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.14" />
-<<<<<<< HEAD
-=======
-    <PackageReference Include="Microsoft.OpenApi" Version="2.4.1" />
->>>>>>> 57fc7a2563917c64d9641b45ccd1bd8f76f3006e
     <PackageReference Include="Neo4j.Driver" Version="6.0.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.7" />
   </ItemGroup>
