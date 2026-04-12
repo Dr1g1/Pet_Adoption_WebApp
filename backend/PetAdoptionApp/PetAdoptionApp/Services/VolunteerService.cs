@@ -3,6 +3,7 @@ using PetAdoptionApp.DTOs.Volunteer;
 using PetAdoptionApp.DTOs.Shelter;
 using PetAdoptionApp.Interfaces;
 using System.Linq.Expressions;
+using Microsoft.AspNetCore.Mvc.Diagnostics;
 
 namespace PetAdoptionApp.Services
 {
@@ -52,7 +53,7 @@ namespace PetAdoptionApp.Services
             });
         }
 
-        public async Task<VolunteerDto?> GetByIdAsync(string Id)
+        public async Task<VolunteerDto?> GetByIdAsync(string id)
         {
             var query = @"
                 MATCH (v:Volunteer {id: $id})
@@ -66,7 +67,11 @@ namespace PetAdoptionApp.Services
             await using var session = _driver.AsyncSession();
             return await session.ExecuteReadAsync(async tx =>
             {
+<<<<<<< HEAD
                 var cursor = await tx.RunAsync(query, new { id = Id });
+=======
+                var cursor = await tx.RunAsync(query, new { id });
+>>>>>>> 57fc7a2563917c64d9641b45ccd1bd8f76f3006e
                 if (!await cursor.FetchAsync())
                     return null;
                 var record = cursor.Current;
@@ -100,8 +105,7 @@ namespace PetAdoptionApp.Services
                     isActive:     true,
                     skills:       $skills,
                     availableDays: $availableDays,
-                    joinedAt:     $joinedAt,
-                    rating:       null
+                    joinedAt:     $joinedAt
                 })
                 RETURN v";
 
@@ -211,18 +215,27 @@ namespace PetAdoptionApp.Services
 
         public async Task<bool> DeleteAsync(string id)
         {
-            var query = @"
-                    MATCH (v:Volunteer {id: $id})
-                    DETACH DELETE v
-                    RETURN count(v) AS deleted";
-
             await using var session = _driver.AsyncSession();
-            return await session.ExecuteWriteAsync(async tx =>
+
+            var exists = await session.ExecuteReadAsync(async tx =>
             {
-                var cursor = await tx.RunAsync(query, new { id });
+                var cursor = await tx.RunAsync(
+                        "MATCH (v:Volunteer {id: $id}) RETURN count(v) > 0 AS exists",
+                        new { id });
                 var record = await cursor.SingleAsync();
-                return record["deleted"].As<int>() > 0;
+                return record["exists"].As<bool>();
             });
+
+            if (!exists) return false;
+
+            await session.ExecuteWriteAsync(async tx =>
+            {
+                await tx.RunAsync(
+                    "MATCH (v:Volunteer {id: $is}) DETACH DELETE v",
+                    new { id });
+            });
+
+            return true;
         }
 
 
@@ -264,10 +277,16 @@ namespace PetAdoptionApp.Services
             Rating = node.Properties.ContainsKey("rating")
                 ? node["rating"].As<float?>() : null,
             Skills = node.Properties.ContainsKey("skills")
+<<<<<<< HEAD
                 ? node["skills"].As<List<object>>().Select(x => x.ToString()).ToArray() : null,
             
             AvailableDays = node.Properties.ContainsKey("availableDays")
                 ? node["availableDays"].As<List<object>>().Select(x => x.ToString()).ToArray() : null,
+=======
+                ? node["skills"].As<List<object>>().Select(x => x.ToString()!).ToArray() : null,
+            AvailableDays = node.Properties.ContainsKey("availableDays")
+                ? node["availableDays"].As<List<object>>().Select(x => x.ToString()!).ToArray() : null,
+>>>>>>> 57fc7a2563917c64d9641b45ccd1bd8f76f3006e
             JoinedAt = node.Properties.ContainsKey("joinedAt")
                 ? DateTime.Parse(node["joinedAt"].As<string>()) : null,
             Shelter = shelterNode == null ? null : new ShelterDto

@@ -4,6 +4,7 @@ using PetAdoptionApp.DTOs.Animal;
 using PetAdoptionApp.DTOs.MedicalRecord;
 using PetAdoptionApp.Interfaces;
 using PetAdoptionApp.Models;
+using System.Reflection;
 
 namespace PetAdoptionApp.Services
 {
@@ -186,6 +187,7 @@ namespace PetAdoptionApp.Services
             });
         }
 
+<<<<<<< HEAD
         public async Task<bool> AddRelativeToAnimal(string animalId, AnimalAddRelativeDto dto)
         {
             var query = @"
@@ -205,6 +207,81 @@ namespace PetAdoptionApp.Services
                 var result = await pointer.SingleAsync();
                 return result["exists"].As<bool>();
             });
+=======
+        public async Task<string?> AddImageAsync(string animalId, IFormFile file)
+        {
+            // provera koliko slika vec ima:
+            var countQry = @"
+                MATCH (a:Animal {id: $animalId})
+                RETURN coalesce(size(a.images), 0) AS imageCount";
+            // coalesce() - fja koja prima listu izraza i vraca prvu vrednost koja nije null
+
+            await using var session = _driver.AsyncSession();
+
+            var currentCount = await session.ExecuteReadAsync(async tx =>
+            {
+                var pointer = await tx.RunAsync(countQry, new { animalId });
+                if (!await pointer.FetchAsync())
+                    return -1; //zivotinja ne postoji
+                return pointer.Current["imageCount"].As<int>();
+            });
+
+            if (currentCount == -1)
+                return null; // zivotinja nije pronadjena
+            if (currentCount >= 5)
+                return null; // ima vec 5 slika
+
+            var extension = Path.GetExtension(file.FileName);
+            var uniqueFileName = $"{Guid.NewGuid()}{extension}";
+            var filePath = Path.Combine("images", uniqueFileName);
+
+            await using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            var updateQry = @"
+                MATCH (a:Animal {id: $animalId})
+                SET a.images = coalesce(a.images, []) + [$imagePath]
+                RETURN a.images AS images";
+
+            await session.ExecuteWriteAsync(async tx =>
+            {
+                await tx.RunAsync(updateQry, new { animalId, imagePath = filePath });
+            });
+
+            return filePath;
+        }
+
+        public async Task<bool> RemoveImageAsync(string animalId, string fileName)
+        {
+            // filename je ime fajla, a filepath je putanja koja se cuva u bazi
+            var filePath = Path.Combine("images", fileName);
+
+            // uklanjamo iz neo4j liste
+            var query = @"
+                MATCH (a:Animal {id: $animalId})
+                WHERE $filePath IN coalesce(a.images, [])
+                SET a.images = [img IN a.images WHERE img <> $filePath]
+                RETURN count(a) > 0 AS removed";
+
+            await using var session = _driver.AsyncSession();
+
+            var removedFromDb = await session.ExecuteWriteAsync(async tx =>
+            {
+                var pointer = await tx.RunAsync(query, new { animalId, filePath });
+                if (!await pointer.FetchAsync()) return false;
+                return pointer.Current["removed"].As<bool>();
+            });
+
+            if (!removedFromDb) return false;
+
+            // brisemo fajl sa diska
+            if (File.Exists(filePath))
+                File.Delete(filePath);
+
+            return true;
+>>>>>>> 57fc7a2563917c64d9641b45ccd1bd8f76f3006e
         }
 
         //pomocne funkcije:

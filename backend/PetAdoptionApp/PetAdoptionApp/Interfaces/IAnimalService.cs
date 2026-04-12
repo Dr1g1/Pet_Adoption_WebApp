@@ -9,6 +9,8 @@ namespace PetAdoptionApp.Interfaces
         Task<AnimalResponseDto> ReturnAnimalId(string animalId);
         Task<bool> AddCaretakerAsync(string animalId, AnimalAddCaretakerDto dto);
         Task<bool> UpdateAnimalImages(string animalId, AnimalUpdateImagesDto dto);
+        Task<string?> AddImageAsync(string animalId, IFormFile file);
+        Task<bool> RemoveImageAsync(string animalId, string fileName);
         Task<bool> MarkAsAdoptedAsync(string animalId, AnimalAdoptedDto dto);
 
         //to do: dodati funkcije za dodavanje i brisanje zivotinje koja je u srodstvu sa nekom prema id-ju.
