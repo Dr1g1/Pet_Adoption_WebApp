@@ -1,6 +1,7 @@
 ﻿using PetAdoptionApp.DTOs.MedicalRecord;
 using PetAdoptionApp.Interfaces;
 using Neo4j.Driver;
+using System.Linq;
 
 namespace PetAdoptionApp.Services
 {
@@ -26,12 +27,13 @@ namespace PetAdoptionApp.Services
                                     clinicPhone: $clinicPhone,
                                     vetName: $vetName,
                                     nextDueDate: datetime($nextDueDate),
-                                    vaccines: $vaccines,
+                                    vaccines: $vaccines
                                     })
                 RETURN mr";
             var parameters = new
             {
                 id = newId,
+                animalId = animalId,
                 description = dto.description,
                 date = dto.date.ToString("yyyy-MM-dd"),
                 clinicPhone = dto.clinicPhone,
@@ -53,7 +55,7 @@ namespace PetAdoptionApp.Services
             //izbrisi jedan record.
             var query = @"
                 MATCH (mr: MedicalRecord {id: $recordId})
-                WITH count(mr) > 0 AS exists
+                WITH mr, count(mr) > 0 AS exists
                 DETACH DELETE mr
                 RETURN exists
                 ";
@@ -95,7 +97,7 @@ namespace PetAdoptionApp.Services
                 clinicPhone = node.Properties["clinicPhone"].As<string>(),
                 vetName = node.Properties["vetName"].As<string>(),
                 nextDueDate = DateTime.Parse(node.Properties["nextDueDate"].As<string>()),
-                vaccines = node.Properties["vaccines"].As<string[]>(),
+                vaccines = node.Properties["vaccines"].As<List<object>>().Select(x => x.ToString()).ToArray()
             };
         }
     }

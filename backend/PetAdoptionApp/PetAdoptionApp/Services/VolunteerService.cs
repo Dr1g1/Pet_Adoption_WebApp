@@ -227,7 +227,7 @@ namespace PetAdoptionApp.Services
             await session.ExecuteWriteAsync(async tx =>
             {
                 await tx.RunAsync(
-                    "MATCH (v:Volunteer {id: $is}) DETACH DELETE v",
+                    "MATCH (v:Volunteer {id: $id}) DETACH DELETE v",
                     new { id });
             });
 

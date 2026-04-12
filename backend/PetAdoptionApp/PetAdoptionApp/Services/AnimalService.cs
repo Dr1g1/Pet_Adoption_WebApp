@@ -158,7 +158,7 @@ namespace PetAdoptionApp.Services
             return await session.ExecuteReadAsync(async x =>
             {
                 var query = @"
-                    MATCH (a: Animal {id = $animalId})
+                    MATCH (a: Animal {id: $animalId})
                     RETURN a
                     ";
                 var cursor = await x.RunAsync(query, new { animalId });
@@ -275,7 +275,7 @@ namespace PetAdoptionApp.Services
                 var pointer = await x.RunAsync(query, new
                 {
                     animalId,
-                    relatedId = dto.RelativeId
+                    relativeId = dto.RelativeId
                 });
 
                 var result = await pointer.SingleAsync();
