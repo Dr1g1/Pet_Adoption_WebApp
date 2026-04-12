@@ -66,7 +66,7 @@ namespace PetAdoptionApp.Services
             await using var session = _driver.AsyncSession();
             return await session.ExecuteReadAsync(async tx =>
             {
-                var cursor = await tx.RunAsync(query, new { Id });
+                var cursor = await tx.RunAsync(query, new { id = Id });
                 if (!await cursor.FetchAsync())
                     return null;
                 var record = cursor.Current;
@@ -264,9 +264,10 @@ namespace PetAdoptionApp.Services
             Rating = node.Properties.ContainsKey("rating")
                 ? node["rating"].As<float?>() : null,
             Skills = node.Properties.ContainsKey("skills")
-                ? node["skills"].As<string[]?>() : null,
+                ? node["skills"].As<List<object>>().Select(x => x.ToString()).ToArray() : null,
+            
             AvailableDays = node.Properties.ContainsKey("availableDays")
-                ? node["availableDays"].As<string[]?>() : null,
+                ? node["availableDays"].As<List<object>>().Select(x => x.ToString()).ToArray() : null,
             JoinedAt = node.Properties.ContainsKey("joinedAt")
                 ? DateTime.Parse(node["joinedAt"].As<string>()) : null,
             Shelter = shelterNode == null ? null : new ShelterDto

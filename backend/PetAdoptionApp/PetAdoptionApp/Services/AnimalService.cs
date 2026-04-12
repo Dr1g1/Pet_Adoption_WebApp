@@ -58,7 +58,7 @@ namespace PetAdoptionApp.Services
                     isGoodWithPets: $isGoodWithPets,
                     description: $description,
                     isAdopted: false,
-                    arrivedAt: datetime($arrivedAt),
+                    arrivedAt: datetime($arrivedAt)
                 })
                 CREATE (a)-[:HOUSED_IN]->(s)
                 CREATE (a)-[:CARED_BY]->(v)
@@ -183,6 +183,27 @@ namespace PetAdoptionApp.Services
 
                 var result = await pointer.SingleAsync();
                 return result["imagesUpdate"].As<bool>();
+            });
+        }
+
+        public async Task<bool> AddRelativeToAnimal(string animalId, AnimalAddRelativeDto dto)
+        {
+            var query = @"
+                MATCH (a:Animal {id:$animalId})
+                MATCH (related:Animal {id:$relativeId})
+                MERGE (a)-[:RELATED]->(related)
+                RETURN count(a) > 0 AS exists";
+            await using var session = _driver.AsyncSession();
+            return await session.ExecuteWriteAsync(async x =>
+            {
+                var pointer = await x.RunAsync(query, new
+                {
+                    animalId,
+                    relatedId = dto.RelativeId
+                });
+
+                var result = await pointer.SingleAsync();
+                return result["exists"].As<bool>();
             });
         }
 

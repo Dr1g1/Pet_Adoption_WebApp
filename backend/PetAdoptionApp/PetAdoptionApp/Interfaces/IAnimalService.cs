@@ -10,5 +10,8 @@ namespace PetAdoptionApp.Interfaces
         Task<bool> AddCaretakerAsync(string animalId, AnimalAddCaretakerDto dto);
         Task<bool> UpdateAnimalImages(string animalId, AnimalUpdateImagesDto dto);
         Task<bool> MarkAsAdoptedAsync(string animalId, AnimalAdoptedDto dto);
+
+        //to do: dodati funkcije za dodavanje i brisanje zivotinje koja je u srodstvu sa nekom prema id-ju.
+        Task<bool> AddRelativeToAnimal(string animalId, AnimalAddRelativeDto dto);
     }
 }

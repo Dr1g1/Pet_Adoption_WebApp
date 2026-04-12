@@ -66,5 +66,13 @@ namespace PetAdoptionApp.Controllers
             if (!result) return NotFound("Zivotinja sa ovom identifikacijom nije pronadjena");
             return Ok(result);
         }
+
+        [HttpPatch("{animalId}/related")]
+        public async Task<IActionResult> AddRelatedAnimal(string animalId, [FromBody] AnimalAddRelativeDto dto)
+        {
+            var result = await _animalService.AddRelativeToAnimal(animalId, dto);
+            if (!result) return NotFound("Zivotinja sa ovom identifikacijom nije pronadjena");
+            return Ok(result);
+        }
     }
 }

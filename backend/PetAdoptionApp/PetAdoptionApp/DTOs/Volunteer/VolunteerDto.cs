@@ -14,4 +14,4 @@ namespace PetAdoptionApp.DTOs.Volunteer
         public ShelterDto? Shelter { get; set; }
     }
 }
-}
+
