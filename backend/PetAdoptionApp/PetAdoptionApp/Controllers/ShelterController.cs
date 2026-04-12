@@ -38,7 +38,7 @@ namespace PetAdoptionApp.Controllers
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateShelter(string id, [FromBody] ShelterCreateDto dto)
+        public async Task<IActionResult> UpdateShelter(string id, [FromBody] ShelterDto dto)
         {
             var result = await _shelterService.UpdateShelterAsync(id, dto);
             if (result == null) return NotFound();

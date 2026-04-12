@@ -19,14 +19,14 @@ namespace PetAdoptionApp.Services
             var newId = Guid.NewGuid().ToString();
             var query = @"
                 MATCH (a: Animal {id: $animalId})
-                CREATE (a)-[:HAS]->(mr: MedialRecord {
-                                    id: $id
-                                    description: $description
-                                    date: datetime($date)
-                                    clinicPhone: $clinicPhone
-                                    vetName: $vetName
-                                    nextDueDate: datetime($nextDueDate)
-                                    vaccines: $vaccines
+                CREATE (a)-[:HAS]->(mr: MedicalRecord {
+                                    id: $id,
+                                    description: $description,
+                                    date: datetime($date),
+                                    clinicPhone: $clinicPhone,
+                                    vetName: $vetName,
+                                    nextDueDate: datetime($nextDueDate),
+                                    vaccines: $vaccines,
                                     })
                 RETURN mr";
             var parameters = new
