@@ -66,5 +66,37 @@ namespace PetAdoptionApp.Controllers
             if (!result) return NotFound("Zivotinja sa ovom identifikacijom nije pronadjena");
             return Ok(result);
         }
+
+        [HttpPost("{animalId}/addimage")]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> AddImage(string animalId, IFormFile file)
+        {
+            if(file == null || file.Length == 0)
+            {
+                return BadRequest("Fajl je obavezan!");
+            }
+
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+            var extension = Path.GetExtension(file.FileName).ToLower();
+            if (!allowedExtensions.Contains(extension))
+                return BadRequest("Dozvoljeni formati: jpg, jpeg, png, webp.");
+
+            if (file.Length > 5 * 1024 * 1024) // 5MB limit
+                return BadRequest("Maksimalna velicina fajla je 5MB!");
+
+            var result = await _animalService.AddImageAsync(animalId, file);
+
+            if (result == null)
+                return BadRequest("Zivotinja nije pronadjena ili vec ima 5 slika!");
+
+            return Ok(new { path = result });
+        }
+
+        [HttpDelete("{animalId}/images/{fileName}")]
+        public async Task<IActionResult> RemoveImage(string animalId, string fileName)
+        {
+            var result = await _animalService.RemoveImageAsync(animalId, fileName);
+            return result ? NoContent() : NotFound();
+        }
     }
 }

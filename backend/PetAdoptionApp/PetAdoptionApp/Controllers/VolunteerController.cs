@@ -22,7 +22,10 @@ namespace PetAdoptionApp.Controllers
         // GET api/volunteers?shelterId=abc123
         [HttpGet("by-shelter/{shelterId}")]
         public async Task<IActionResult> GetByShelter(string shelterId)
-            => Ok(await _service.GetByShelterAsync(shelterId));
+        {
+            var result = await _service.GetByShelterAsync(shelterId);
+            return Ok(result);
+        }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(string id)

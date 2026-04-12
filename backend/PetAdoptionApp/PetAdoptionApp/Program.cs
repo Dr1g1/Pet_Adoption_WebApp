@@ -20,6 +20,11 @@ builder.Services.AddSingleton<IDriver>(GraphDatabase.Driver(
 // Add services to the container.
 
 builder.Services.AddScoped<IShelterService, ShelterService>();
+builder.Services.AddScoped<IVolunteerService, VolunteerService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IAnimalService, AnimalService>();
+builder.Services.AddScoped<IAdoptionRequestService, AdoptionRequestService>();
+builder.Services.AddScoped<IMedicalRecordService, MedicalRecordService>();
 
 builder.Services.AddControllers().AddJsonOptions(
     options =>
@@ -29,6 +34,18 @@ builder.Services.AddControllers().AddJsonOptions(
 //builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// kreira images folder ako ne postoji
+var imagesPath = Path.Combine(builder.Environment.ContentRootPath, "images");
+Directory.CreateDirectory(imagesPath); // ne baca gresku ako  postoji
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll",
+        builder => builder.AllowAnyOrigin()
+                            .AllowAnyMethod()
+                            .AllowAnyHeader());
+});
 
 //builder.Services.AddOpenApi();
 var app = builder.Build();
@@ -54,6 +71,7 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = "/images"
 });
 
+app.UseCors("AllowAll");
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
