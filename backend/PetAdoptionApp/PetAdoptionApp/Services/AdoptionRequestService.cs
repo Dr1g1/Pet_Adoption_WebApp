@@ -18,7 +18,7 @@ namespace PetAdoptionApp.Services
             var query = @"
                 MATCH (u:User {id:$userId})-[:REQUESTED]->(ar:AdoptionRequest {id:$requestId})
                 WHERE ar.status='Pending'
-                WITH count(ar) > 0 AS deleted
+                WITH ar, count(ar) > 0 AS deleted
                 DETACH DELETE ar
                 RETURN deleted";
             await using var session = _driver.AsyncSession();
@@ -28,6 +28,7 @@ namespace PetAdoptionApp.Services
                 var result = await pointer.SingleAsync();
                 return result["deleted"].As<bool>();
             });
+
         }
 
         public async Task<AdoptionRequestUserResponseDto> CreateAdoptionRequestAsync(string userId, AdoptionRequestUserCreateDto dto)
@@ -35,7 +36,7 @@ namespace PetAdoptionApp.Services
             //ovaj adoption request kreira korisnik kada hoce da usvoji neku zivotinju.
             var newId = Guid.NewGuid().ToString();
             var query = @"
-                MATCH (u:User {id:$useId})
+                MATCH (u:User {id:$userId})
                 MATCH (a:Animal {id:$animalId})-[:HOUSED_IN]->(s:Shelter)
                 CREATE (ar:AdoptionRequest
                 {
@@ -47,7 +48,7 @@ namespace PetAdoptionApp.Services
                 CREATE (u)-[:REQUESTED]->(ar)
                 CREATE (ar)-[:FOR]->(a)
                 CREATE (ar)-[:REVIEWED_BY]->(s)
-                RETRURN ar";
+                RETURN ar, a.id AS animalId, s.id AS shelterId";
             await using var session = _driver.AsyncSession();
             return await session.ExecuteWriteAsync(async x =>
             {
@@ -65,8 +66,8 @@ namespace PetAdoptionApp.Services
                     RequestId = node["id"].As<string>(),
                     Status = Enum.Parse<Enums.Status>(node["status"].As<string>()),
                     CreatedAt = DateTime.Parse(node["createdAt"].As<string>()),
-                    AnimalId = node["animalId"].As<string>(),
-                    ShelterId = node["shelterId"].As<string>()
+                    AnimalId = result["animalId"].As<string>(),
+                    ShelterId = result["shelterId"].As<string>()
                 };
             });
         }
@@ -174,7 +175,7 @@ namespace PetAdoptionApp.Services
                 WITH ar
                 MATCH(ar)-[:FOR]->(a:Animal)
                 WITH a, ar
-                MATCH (other:AdoptionRequest)-[:FOR]->(a)
+                OPTIONAL MATCH (other:AdoptionRequest)-[:FOR]->(a)
                 WHERE other.id<>ar.id AND other.status='Pending'
                 SET other.status='Rejected',
                     other.updatedAt=datetime()

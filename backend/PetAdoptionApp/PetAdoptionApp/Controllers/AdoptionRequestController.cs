@@ -32,9 +32,10 @@ namespace PetAdoptionApp.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateAdoptionRequest([FromBody] AdoptionRequestUserCreateDto dto)
         {
-            // userId se dobija iz JWT tokena.
+            //userId se dobija iz JWT tokena.
             var userId = User.FindFirst("userId")?.Value;
             if (userId == null) return Unauthorized();
+            //var userId = "aaf25063-3e47-4673-ba8b-fe55eb526a4a";
 
             var result = await _adoptionRequestService.CreateAdoptionRequestAsync(userId, dto);
             return Ok(result);
@@ -45,6 +46,7 @@ namespace PetAdoptionApp.Controllers
         {
             var userId = User.FindFirst("userId")?.Value;
             if (userId == null) return Unauthorized();
+            //var userId = "aaf25063-3e47-4673-ba8b-fe55eb526a4a";
 
             var result = await _adoptionRequestService.DeleteRequestAsync(requestId, userId);
             return Ok(result);
@@ -55,6 +57,7 @@ namespace PetAdoptionApp.Controllers
         {
             var shelterId = User.FindFirst("shelterId")?.Value;
             if (shelterId == null) return Unauthorized();
+            //var shelterId = "80936fa3-cdbb-4bb8-b045-3aa37eddd1e3";
 
             var result = await _adoptionRequestService.ApprovedRequestAsync(dto, shelterId);
             if (!result) return NotFound("Nije pronadjen zahtev");
