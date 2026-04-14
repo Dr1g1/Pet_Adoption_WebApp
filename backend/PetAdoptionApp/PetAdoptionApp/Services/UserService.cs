@@ -18,7 +18,6 @@ namespace PetAdoptionApp.Services
         {
             var query = @"
                 MATCH (u:User)
-                WHERE NOT u:Volunteer
                 RETURN u";
 
             await using var session = _driver.AsyncSession();
