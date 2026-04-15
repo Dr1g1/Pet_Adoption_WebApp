@@ -58,93 +58,36 @@ namespace PetAdoptionApp.Services
             return new AuthResponseDto
             {
                 Token = GenerateJwtToken(user.Id, user.Role, user.ShelterId),
-                //token expiry
+                TokenExpiry = DateTime.UtcNow.AddDays(30),
                 UserInfo = await GetUserInfo(user.Id, user.Role, user.ShelterId)
             };
         }
 
-        public async Task<AuthResponseDto> RegisterUserAsync(RegisterUserDto dto)
-        {
-            await using var session = _driver.AsyncSession();
-
-            var emailExists = await session.ExecuteReadAsync(async x =>
-            {
-                var pointer = await x.RunAsync(@"
-                               MATCH (u:User {email: $email})
-                               RETURN count(u)>0 AS exists",
-                               new { email = dto.Email });
-                var record = await pointer.SingleAsync();
-                return record["exists"].As<bool>();
-            });
-
-            if (emailExists)
-                throw new InvalidOperationException("Korisnik sa ovim email-om vec postoji");
-
-            //email ne postoji, idemo dalje:
-            var newId = Guid.NewGuid().ToString();
-            await session.ExecuteWriteAsync(async x =>
-            {
-                await x.RunAsync(@"
-                                 CREATE (u:User {
-                                         id: $id,
-                                         name: $name,
-                                         surname: $surname,
-                                         email: $email,
-                                         passwordHash: $passwordHash,
-                                         phone: $phone,
-                                         bio: $bio,
-                                         address: $address,
-                                         hasChildren: $hasChildren,
-                                         hasPets: $hasPets,
-                                         livingSpace: $livingSpace,
-                                         role: $role,
-                                         createdAt: $createdAt})",
-                                         new
-                                         {
-                                             id = newId,
-                                             name = dto.Name,
-                                             surname = dto.Surname,
-                                             email = dto.Email,
-                                             passwordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-                                             phone = dto.Phone ?? "",
-                                             bio = dto.Bio ?? "",
-                                             address = dto.Address,
-                                             hasChildren = dto.HasChildren,
-                                             hasPets = dto.HasPets,
-                                             livingSpace = dto.LivingSpace ?? "",
-                                             createdAt = DateTime.UtcNow.ToString("o")
-                                         });
-            });
-                return new AuthResponseDto
-                {
-                    Token = GenerateJwtToken(newId, "User", null),
-                    //token expiry
-                    UserInfo = await GetUserInfo(newId, "User", null)
-                };
-        }
-
-        //public async Task<AuthResponseDto> RegisterVolunteerAsync(RegisterVolunteerDto dto)
-        //{
-        //    await using var session = _driver.AsyncSession();
-
-        //    var emailExists = await session.ExecuteReadAsync(async x =>
-        //    {
-        //        var pointer = await x.RunAsync(@"
-        //                                ")
-        //    });
-        //}
-
+        
         public string GenerateJwtToken(string userId, string role, string? shelterId)
         {
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_secret));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
             var claims = new List<Claim>
             {
-                new Claim(JwtRegisteredClaimName.Sub, userId),
+                new Claim(JwtRegisteredClaimNames.Sub, userId),
                 new Claim(ClaimTypes.Role, role),
-                new Claim(JwtRegisteredClaimName.Jti, Guid.NewGuid().ToString()),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()), //jedinstveni id tokena.
             };
 
+            if (!string.IsNullOrEmpty(shelterId))
+                claims.Add(new Claim("shelterId", shelterId));
+
+            var token = new JwtSecurityToken
+            (
+                issuer: _issuer,
+                audience: _audience,
+                claims: claims,
+                 expires: DateTime.UtcNow.AddDays(30),
+                signingCredentials: credentials
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
         public async Task<UserInfoDto> GetUserInfo(string userId, string role, string? shelterId)
@@ -169,6 +112,85 @@ namespace PetAdoptionApp.Services
                     ShelterId = record["shelterId"].As<string>()
                 };
             });
+        }
+
+        public async Task<AuthResponseDto> RegisterAsync(RegisterDto dto)
+        {
+            await using var session = _driver.AsyncSession();
+            var emailExists = await session.ExecuteReadAsync(async x =>
+            {
+                var pointer = await x.RunAsync(@"
+                                      MATCH (n)
+                                      WHERE (n: User OR n:Volunteer) AND n.email = $email
+                                      RETURN count(n)>0 AS exists",
+                                      new { email = dto.Email });
+                var result = await pointer.SingleAsync();
+                return result["exists"].As<bool>();
+            });
+
+            if (emailExists)
+                throw new InvalidOperationException("Ovaj email se vec koristi");
+
+            var queryV = @"CREATE (v:Volunteer {
+                    id:           $id,
+                    name:         $name,
+                    surname:      $surname,
+                    email:        $email,
+                    passwordHash: $passwordHash,
+                    phone:        $phone,
+                    bio:          $bio,
+                    address:      $address,
+                    hasChildren:  $hasChildren,
+                    hasPets:      $hasPets,
+                    livingSpace:  $livingSpace,
+                    role:         'Volunteer',
+                    isAdmin:      false,
+                    isActive:     true,
+                    skills:       $skills,
+                    availableDays:$availableDays,
+                    joinedAt:     $joinedAt,
+                    createdAt:    $createdAt
+                })";
+            var queryU = @"CREATE (u:User {
+                    id:           $id,
+                    name:         $name,
+                    surname:      $surname,
+                    email:        $email,
+                    passwordHash: $passwordHash,
+                    phone:        $phone,
+                    bio:          $bio,
+                    address:      $address,
+                    hasChildren:  $hasChildren,
+                    hasPets:      $hasPets,
+                    livingSpace:  $livingSpace,
+                    role:         'User',
+                    createdAt:    datetime()
+                })";
+
+            var newId = Guid.NewGuid().ToString();
+
+            await session.ExecuteWriteAsync(async x =>
+            {
+                var query = dto.Role == "Volunteer" ? queryV : queryU;
+                await x.RunAsync(query, new {/*ovde idu podaci koji se dodaju*/});
+            });
+            if(dto.Role == "Volunteer" && !string.IsNullOrEmpty(dto.ShelterId))
+            {
+                await session.ExecuteWriteAsync(async x =>
+                {
+                    await x.RunAsync(@"
+                                      MATCH (v:Volunteer {id:$volunteerId})
+                                      MATCH (s:Shelter {id: $shelterId})
+                                      CREATE (v)-[:VOLUNTEERS_AT]->(s)",
+                                      new { vollunteerId = newId, shelterId = dto.ShelterId });
+                });
+            }
+            return new AuthResponseDto
+            {
+                Token = GenerateJwtToken(newId, dto.Role, dto.ShelterId),
+                TokenExpiry = DateTime.UtcNow.AddDays(30),
+                UserInfo = await GetUserInfo(newId, dto.Role, dto.ShelterId)
+            };
         }
     }
 }
