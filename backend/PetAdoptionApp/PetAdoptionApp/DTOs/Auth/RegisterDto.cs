@@ -7,7 +7,7 @@ namespace PetAdoptionApp.DTOs.Auth
         public string Name { get; set; }
         public string Surname { get; set; }
 
-        [Required, EmailAddress]
+        [Required, EmailAddress] // Data Annotation atributi - ovim dodajemo kao metapodatke nekom polju
         public string Email { get; set; }
 
         [Required, MinLength(8)]
