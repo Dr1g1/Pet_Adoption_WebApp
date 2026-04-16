@@ -7,5 +7,7 @@ namespace PetAdoptionApp.Interfaces
         Task<AuthResponseDto> RegisterAsync(RegisterDto dto);
         Task<AuthResponseDto> LoginUserAsync(LoginDto dto);
         Task<UserInfoDto> GetUserInfo(string userId, string role, string? shelterId);
+        Task<bool> RevokeTokenAsync(string refresh);
+        Task<AuthResponseDto> RefreshTokenAsync(string refresh);
     }
 }
