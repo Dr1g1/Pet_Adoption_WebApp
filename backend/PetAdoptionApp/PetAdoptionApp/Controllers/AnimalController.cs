@@ -67,7 +67,7 @@ namespace PetAdoptionApp.Controllers
             return Ok(result);
         }
 
-        [HttpPost("{animalId}/addimage")]
+        [HttpPost("{animalId}/images2")]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> AddImage(string animalId, IFormFile file)
         {
@@ -76,7 +76,7 @@ namespace PetAdoptionApp.Controllers
                 return BadRequest("Fajl je obavezan!");
             }
 
-            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", "jfif", ".webp" };
             var extension = Path.GetExtension(file.FileName).ToLower();
             if (!allowedExtensions.Contains(extension))
                 return BadRequest("Dozvoljeni formati: jpg, jpeg, png, webp.");
