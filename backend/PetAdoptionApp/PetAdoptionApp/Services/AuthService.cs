@@ -49,7 +49,7 @@ namespace PetAdoptionApp.Services
                 var record = pointer.Current;
                 return new
                 {
-                    Id = record["id"].As<string>(),
+                    Id = record["userId"].As<string>(),
                     PasswordHash = record["userPassword"].As<string>(),
                     Role = record["role"].As<string>(),
                     ShelterId = record["shelterId"].As<string>()
@@ -94,6 +94,7 @@ namespace PetAdoptionApp.Services
             return await session.ExecuteReadAsync(async x =>
             {
                 var pointer = await x.RunAsync(@"
+                                MATCH(rt:RefreshToken {token: $token})
                                 MATCH (u:User {id: $id})
                                 RETURN u.id AS id,
                                        u.name AS name,
@@ -106,8 +107,10 @@ namespace PetAdoptionApp.Services
                 {
                     Id = record["id"].As<string>(),
                     Email = record["email"].As<string>(),
-                    Role = record["role"].As<string>(),
-                    ShelterId = record["shelterId"].As<string>()
+                    Role = role,
+                    ShelterId = shelterId
+                    //Role = record["role"].As<string>(),
+                    //ShelterId = record["shelterId"].As<string>()
                 };
             });
         }
@@ -198,7 +201,7 @@ namespace PetAdoptionApp.Services
                                       MATCH (v:Volunteer {id:$volunteerId})
                                       MATCH (s:Shelter {id: $shelterId})
                                       CREATE (v)-[:VOLUNTEERS_AT]->(s)",
-                                      new { vollunteerId = newId, shelterId = dto.ShelterId });
+                                      new { volunteerId = newId, shelterId = dto.ShelterId });
                 });
             }
             var shelterId = await GetVolunteerShelterId(newId);
@@ -294,7 +297,7 @@ namespace PetAdoptionApp.Services
                                            token: $token,
                                            userId: $userId,
                                            expiresAt: $expiresAt,
-                                           isRevoked: $isRevoked,
+                                           isRevoked: false,
                                            createdAt: $createdAt})",
                                   new
                                   {

@@ -1,70 +1,49 @@
-﻿using Neo4j.Driver;
+﻿// Services/AnimalService.cs
+using Neo4j.Driver;
 using PetAdoptionApp.Common;
 using PetAdoptionApp.DTOs.Animal;
-using PetAdoptionApp.DTOs.MedicalRecord;
 using PetAdoptionApp.Interfaces;
-using PetAdoptionApp.Models;
-using System.Reflection;
 
 namespace PetAdoptionApp.Services
 {
     public class AnimalService : IAnimalService
     {
-        private IDriver _driver;
-        public AnimalService(IDriver driver)
+        private readonly IDriver _driver;
+        private readonly IWebHostEnvironment _env;
+
+        public AnimalService(IDriver driver, IWebHostEnvironment env)
         {
             _driver = driver;
+            _env = env;
         }
 
-        public async Task<bool> AddCaretakerAsync(string animalId, AnimalAddCaretakerDto dto)
-        {
-            var query = @"
-                    MATCH (a: Animal {id: $animalId})
-                    MATCH (v: Volunteer {id: $volunteerId})
-                    MERGE (a)-[:CARED_BY]->(v)
-                    RETURN count(a) > 0 AS caredBy
-                    ";
-            await using var session = _driver.AsyncSession();
-            return await session.ExecuteWriteAsync(async x =>
-            {
-                var pointer = await x.RunAsync(query, new
-                {
-                    animalId,
-                    volunteerId = dto.caretakerId
-                });
-                var result = await pointer.SingleAsync();
 
-                return result["caredBy"].As<bool>(); //nisam sigurna da moze ovako, treba da se proveri.
-            });
-
-        }
-     
         public async Task<AnimalDetailResponseDto> CreateAnimalAsync(AnimalCreateDto dto)
         {
-           var newId = Guid.NewGuid().ToString();
+            var newId = Guid.NewGuid().ToString();
             var query = @"
-                MATCH (s: Shelter {id: $shelterId})
-                MATCH (v: Volunteer {id: $caretakerId})
-                CREATE(a: Animal {
-                    id: $id,
-                    name: $name,
-                    species: $species,
-                    breed: $breed,
-                    age: $age, 
-                    gender: $gender,                 
-                    size: $size,
-                    isVaccinated: $isVaccinated,
-                    isSterilized: $isSterilized,
+                MATCH (s:Shelter {id: $shelterId})
+                MATCH (v:Volunteer {id: $caretakerId})
+                CREATE (a:Animal {
+                    id:           $id,
+                    name:         $name,
+                    species:      $species,
+                    breed:        $breed,
+                    age:          $age,
+                    gender:       $gender,
+                    size:         $size,
+                    isVaccinated:  $isVaccinated,
+                    isSterilized:  $isSterilized,
                     isGoodWithKids: $isGoodWithKids,
                     isGoodWithPets: $isGoodWithPets,
-                    description: $description,
-                    isAdopted: false,
-                    arrivedAt: datetime($arrivedAt)
+                    description:  $description,
+                    isAdopted:    false,
+                    arrivedAt:    $arrivedAt
                 })
                 CREATE (a)-[:HOUSED_IN]->(s)
                 CREATE (a)-[:CARED_BY]->(v)
-                RETURN a, s.id as shelterId, v.id as caretakerId
-                ";
+                RETURN a";
+
             var parameters = new
             {
                 id = newId,
@@ -78,166 +57,176 @@ namespace PetAdoptionApp.Services
                 isSterilized = dto.IsSterilized.ToString(),
                 isGoodWithKids = dto.IsGoodWithKids.ToString(),
                 isGoodWithPets = dto.IsGoodWithPets.ToString(),
-                description = dto.Description,
+                description = dto.Description ?? "",
                 arrivedAt = dto.ArrivedAt.ToString("yyyy-MM-dd"),
                 shelterId = dto.ShelterId,
                 caretakerId = dto.CaretakerId
             };
+
             await using var session = _driver.AsyncSession();
-            return await session.ExecuteWriteAsync(async res =>
+            return await session.ExecuteWriteAsync(async tx =>
             {
-                var cursor = await res.RunAsync(query, parameters);
+                var cursor = await tx.RunAsync(query, parameters);
                 var record = await cursor.SingleAsync();
-                return MapNodeToAnimalDetailResponse(record["a"].As<INode>());
+                return MapToDetail(record["a"].As<INode>());
             });
         }
+
+
+        public async Task<IEnumerable<AnimalResponseDto>> GetAllAnimalsAsync(string shelterId)
+        {
+            var query = @"
+                MATCH (s:Shelter {id: $shelterId})<-[:HOUSED_IN]-(a:Animal)
+                WHERE a.isAdopted = false
+                RETURN a";
+
+            await using var session = _driver.AsyncSession();
+            return await session.ExecuteReadAsync(async tx =>
+            {
+                var cursor = await tx.RunAsync(query, new { shelterId });
+                var records = await cursor.ToListAsync();
+                return records.Select(r => MapToResponse(r["a"].As<INode>()));
+            });
+        }
+
+        public async Task<AnimalResponseDto?> GetAnimalByIdAsync(string animalId)
+        {
+            var query = @"
+                MATCH (a:Animal {id: $animalId})
+                RETURN a";
+
+            await using var session = _driver.AsyncSession();
+            return await session.ExecuteReadAsync(async tx =>
+            {
+                var cursor = await tx.RunAsync(query, new { animalId });
+                if (!await cursor.FetchAsync()) return null;
+                return MapToResponse(cursor.Current["a"].As<INode>());
+            });
+        }
+
 
         public async Task<bool> DeleteAnimalAsync(string animalId)
         {
-            //to do: razmisli o tome sta se brise, a sta treba da se sacuva od podataka kad se obrise zivotinja.
-            var query = @"
-                MATCH (a: Animal {id: $animalId})
-                DETACH DELETE a
-                ";
             await using var session = _driver.AsyncSession();
-            var exists = await session.ExecuteWriteAsync(async x =>
+
+            var exists = await session.ExecuteReadAsync(async tx =>
             {
-                //rezultat upita imenujemo kao exists.
-                var pointer = await x.RunAsync(
-                    "MATCH (a: Animal {id: $animalId})" +
-                    "RETURN count(a) > 0 AS exists",
+                var cursor = await tx.RunAsync(
+                    "MATCH (a:Animal {id: $animalId}) RETURN count(a) > 0 AS exists",
                     new { animalId });
-                var result = await pointer.SingleAsync();
-                return result["exists"].As<bool>();
+                var record = await cursor.SingleAsync();
+                return record["exists"].As<bool>();
             });
+
             if (!exists) return false;
-            await session.ExecuteWriteAsync(async x =>
+
+            await session.ExecuteWriteAsync(async tx =>
             {
-                await x.RunAsync(query, new { animalId });
+                await tx.RunAsync(
+                    "MATCH (a:Animal {id: $animalId}) DETACH DELETE a",
+                    new { animalId });
             });
+
             return true;
         }
 
-        public async Task<bool> MarkAsAdoptedAsync(string animalId, AnimalAdoptedDto dto)
+        public async Task<bool> MarkAsAdoptedAsync(string animalId, string userId)
         {
             var query = @"
-                MATCH (a: Animal {id: $animalId})
+                MATCH (a:Animal {id: $animalId})
+                MATCH (u:User {id: $userId})
                 SET a.isAdopted = true
-                RETURN count(a)>0 AS adopted
-                ";
-            await using var session = _driver.AsyncSession();
-            return await session.ExecuteWriteAsync(async x =>
-            {
-                var pointer = await x.RunAsync(query, new { animalId });
-                var result = await pointer.SingleAsync();
-                return result["adopted"].As<bool>();
-            });
-        }
+                MERGE (u)-[:ADOPTED]->(a)
+                RETURN count(a) > 0 AS adopted";
 
-        public async Task<IEnumerable<AnimalResponseDto>> ReturnAllAnimals(string shelterId)
-        {
             await using var session = _driver.AsyncSession();
-            return await session.ExecuteReadAsync(async x =>
+            return await session.ExecuteWriteAsync(async tx =>
             {
-                var query = @"
-                    MATCH (s: Shelter {id: $shelterId})<-[:HOUSED_IN]-(a:Animal)
-                    WHERE a.isAdopted = false
-                    RETURN a
-                    ";
-                var cursor = await x.RunAsync(query, new { shelterId });
-                var animals = new List<AnimalResponseDto>();
-                while (await cursor.FetchAsync())
-                    animals.Add(MapNodeToAnimalResponse(cursor.Current["a"].As<INode>()));
-                return animals;
-            }); 
-        }
-
-        public async Task<AnimalResponseDto> ReturnAnimalId(string animalId)
-        {
-            await using var session = _driver.AsyncSession();
-            return await session.ExecuteReadAsync(async x =>
-            {
-                var query = @"
-                    MATCH (a: Animal {id: $animalId})
-                    RETURN a
-                    ";
-                var cursor = await x.RunAsync(query, new { animalId });
+                var cursor = await tx.RunAsync(query, new { animalId, userId });
                 var record = await cursor.SingleAsync();
-                return MapNodeToAnimalResponse(record["a"].As<INode>());
+                return record["adopted"].As<bool>();
             });
         }
 
-        public async Task<bool> UpdateAnimalImages(string animalId, AnimalUpdateImagesDto dto)
+        public async Task<bool> AddCaretakerAsync(string animalId, string caretakerId)
         {
-            //proveriti implementaciju.
-            if (dto.Images.Count > 5)
-                return false;
             var query = @"
-                MATCH (a: Animal {id: $animalId})
-                SET a.images = $images
-                RETURN count(a) > 0 AS imagesUpdate
-                ";
-            await using var session = _driver.AsyncSession();
-            return await session.ExecuteWriteAsync(async x =>
-            {
-                var pointer = await x.RunAsync(query, new { animalId, images = dto.Images });
+                MATCH (a:Animal {id: $animalId})
+                MATCH (v:Volunteer {id: $caretakerId})
+                MERGE (a)-[:CARED_BY]->(v)
+                RETURN count(a) > 0 AS added";
 
-                var result = await pointer.SingleAsync();
-                return result["imagesUpdate"].As<bool>();
+            await using var session = _driver.AsyncSession();
+            return await session.ExecuteWriteAsync(async tx =>
+            {
+                var cursor = await tx.RunAsync(query, new { animalId, caretakerId });
+                var record = await cursor.SingleAsync();
+                return record["added"].As<bool>();
             });
         }
+
+        public async Task<bool> AddRelativeAsync(string animalId, string relativeId)
+        {
+            var query = @"
+                MATCH (a:Animal {id: $animalId})
+                MATCH (r:Animal {id: $relativeId})
+                MERGE (a)-[:RELATED]->(r)
+                RETURN count(a) > 0 AS added";
+
+            await using var session = _driver.AsyncSession();
+            return await session.ExecuteWriteAsync(async tx =>
+            {
+                var cursor = await tx.RunAsync(query, new { animalId, relativeId });
+                var record = await cursor.SingleAsync();
+                return record["added"].As<bool>();
+            });
+        }
+
 
         public async Task<string?> AddImageAsync(string animalId, IFormFile file)
         {
-            // provera koliko slika vec ima:
-            var countQry = @"
+            var countQuery = @"
                 MATCH (a:Animal {id: $animalId})
                 RETURN coalesce(size(a.images), 0) AS imageCount";
-            // coalesce() - fja koja prima listu izraza i vraca prvu vrednost koja nije null
 
             await using var session = _driver.AsyncSession();
 
             var currentCount = await session.ExecuteReadAsync(async tx =>
             {
-                var pointer = await tx.RunAsync(countQry, new { animalId });
-                if (!await pointer.FetchAsync())
-                    return -1; //zivotinja ne postoji
-                return pointer.Current["imageCount"].As<int>();
+                var cursor = await tx.RunAsync(countQuery, new { animalId });
+                if (!await cursor.FetchAsync()) return -1;
+                return cursor.Current["imageCount"].As<int>();
             });
 
-            if (currentCount == -1)
-                return null; // zivotinja nije pronadjena
-            if (currentCount >= 5)
-                return null; // ima vec 5 slika
+            if (currentCount == -1) return null;
+            if (currentCount >= 5) return null;
 
             var extension = Path.GetExtension(file.FileName);
             var uniqueFileName = $"{Guid.NewGuid()}{extension}";
-            var filePath = Path.Combine("images", uniqueFileName);
+            var absolutePath = Path.Combine(_env.ContentRootPath, "images", uniqueFileName);
+            var relativePath = Path.Combine("images", uniqueFileName);
 
-            await using (var stream = new FileStream(filePath, FileMode.Create))
+            await using (var stream = new FileStream(absolutePath, FileMode.Create))
             {
                 await file.CopyToAsync(stream);
             }
 
-            var updateQry = @"
+            var updateQuery = @"
                 MATCH (a:Animal {id: $animalId})
-                SET a.images = coalesce(a.images, []) + [$imagePath]
-                RETURN a.images AS images";
+                SET a.images = coalesce(a.images, []) + [$imagePath]";
 
             await session.ExecuteWriteAsync(async tx =>
             {
-                await tx.RunAsync(updateQry, new { animalId, imagePath = filePath });
+                await tx.RunAsync(updateQuery, new { animalId, imagePath = relativePath });
             });
 
-            return filePath;
+            return relativePath;
         }
 
         public async Task<bool> RemoveImageAsync(string animalId, string fileName)
         {
-            // filename je ime fajla, a filepath je putanja koja se cuva u bazi
             var filePath = Path.Combine("images", fileName);
 
-            // uklanjamo iz neo4j liste
             var query = @"
                 MATCH (a:Animal {id: $animalId})
                 WHERE $filePath IN coalesce(a.images, [])
@@ -246,81 +235,71 @@ namespace PetAdoptionApp.Services
 
             await using var session = _driver.AsyncSession();
 
-            var removedFromDb = await session.ExecuteWriteAsync(async tx =>
+            var removed = await session.ExecuteWriteAsync(async tx =>
             {
-                var pointer = await tx.RunAsync(query, new { animalId, filePath });
-                if (!await pointer.FetchAsync()) return false;
-                return pointer.Current["removed"].As<bool>();
+                var cursor = await tx.RunAsync(query, new { animalId, filePath });
+                if (!await cursor.FetchAsync()) return false;
+                return cursor.Current["removed"].As<bool>();
             });
 
-            if (!removedFromDb) return false;
+            if (!removed) return false;
 
-            // brisemo fajl sa diska
-            if (File.Exists(filePath))
-                File.Delete(filePath);
+            var absolutePath = Path.Combine(_env.ContentRootPath, filePath);
+            if (File.Exists(absolutePath))
+                File.Delete(absolutePath);
 
             return true;
         }
 
-        public async Task<bool> AddRelativeToAnimal(string animalId, AnimalAddRelativeDto dto)
-        {
-            var query = @"
-                MATCH (a:Animal {id:$animalId})
-                MATCH (related:Animal {id:$relativeId})
-                MERGE (a)-[:RELATED]->(related)
-                RETURN count(a) > 0 AS exists";
-            await using var session = _driver.AsyncSession();
-            return await session.ExecuteWriteAsync(async x =>
-            {
-                var pointer = await x.RunAsync(query, new
-                {
-                    animalId,
-                    relativeId = dto.RelativeId
-                });
+        // MAPPING HELPERI 
 
-                var result = await pointer.SingleAsync();
-                return result["exists"].As<bool>();
-            });
-        }
-
-        //pomocne funkcije:
-        private AnimalResponseDto MapNodeToAnimalResponse(INode node)
+        private static AnimalResponseDto MapToResponse(INode node)
         {
-            var allImages = node.Properties.ContainsKey("images") ? node.Properties["images"].As<List<string>>() :
-               new List<string>();
-            string firstImage = allImages.Count > 0 ? allImages[0] : null;
+            var images = node.Properties.ContainsKey("images")
+                ? node["images"].As<List<object>>().Select(x => x.ToString()!).ToList()
+                : new List<string>();
 
             return new AnimalResponseDto
             {
-                id = node.Properties["id"].As<string>(),
-                breed = node.Properties["breed"].As<string>(),
-                name = node.Properties["name"].As<string>(),
-                gender = Enum.Parse<Enums.Gender>(node.Properties["gender"].As<string>()),
-                age = node.Properties.ContainsKey("age") ? node.Properties["age"].As<int>() : null,
-                isVaccinated = Enum.Parse<Enums.AnimalBoolean>(node.Properties["isVaccinated"].As<string>()),
-                isSterilized = Enum.Parse<Enums.AnimalBoolean>(node.Properties["isSterilized"].As<string>()),
-                primaryImgUrl = firstImage
+                id = node["id"].As<string>(),
+                name = node["name"].As<string>(),
+                breed = node["breed"].As<string>(),
+                gender = Enum.Parse<Enums.Gender>(node["gender"].As<string>()),
+                age = node.Properties.ContainsKey("age")
+                    ? node["age"].As<int?>() : null,
+                isVaccinated = Enum.Parse<Enums.AnimalBoolean>(
+                    node["isVaccinated"].As<string>()),
+                isSterilized = Enum.Parse<Enums.AnimalBoolean>(
+                    node["isSterilized"].As<string>()),
+                primaryImgUrl = images.FirstOrDefault()
             };
         }
 
-        private AnimalDetailResponseDto MapNodeToAnimalDetailResponse(INode node)
+        private static AnimalDetailResponseDto MapToDetail(INode node)
         {
+            var images = node.Properties.ContainsKey("images")
+                ? node["images"].As<List<object>>().Select(x => x.ToString()!).ToList()
+                : new List<string>();
+
             return new AnimalDetailResponseDto
             {
-                id = node.Properties["id"].As<string>(),
-                name = node.Properties["name"].As<string>(),
-                species = node.Properties["species"].As<string>(),
-                breed = node.Properties["breed"].As<string>(),
-                age = node.Properties.ContainsKey("age") ? node.Properties["age"].As<int>() : null,
-
-                gender = Enum.Parse<Enums.Gender>(node.Properties["gender"].As<string>()),
-                size = Enum.Parse<Enums.Size>(node.Properties["size"].As<string>()),
-
-                isVaccinated = Enum.Parse<Enums.AnimalBoolean>(node.Properties["isVaccinated"].As<string>()),
-                isSterilized = Enum.Parse<Enums.AnimalBoolean>(node.Properties["isSterilized"].As<string>()),
-                description = node.Properties["description"].As<string>(),
-                arrivedAt = DateTime.Parse(node.Properties["arrivedAt"].As<string>()),
-                images = node.Properties.ContainsKey("images") ? node.Properties["images"].As<List<string>>() : new List<string>(),
+                id = node["id"].As<string>(),
+                name = node["name"].As<string>(),
+                species = node["species"].As<string>(),
+                breed = node["breed"].As<string>(),
+                age = node.Properties.ContainsKey("age")
+                    ? node["age"].As<int?>() : null,
+                gender = Enum.Parse<Enums.Gender>(node["gender"].As<string>()),
+                size = Enum.Parse<Enums.Size>(node["size"].As<string>()),
+                isVaccinated = Enum.Parse<Enums.AnimalBoolean>(
+                    node["isVaccinated"].As<string>()),
+                isSterilized = Enum.Parse<Enums.AnimalBoolean>(
+                    node["isSterilized"].As<string>()),
+                description = node.Properties.ContainsKey("description")
+                    ? node["description"].As<string?>() : null,
+                arrivedAt = node.Properties.ContainsKey("arrivedAt")
+                    ? DateTime.Parse(node["arrivedAt"].As<string>()) : DateTime.UtcNow,
+                images = images
             };
         }
     }

@@ -23,7 +23,7 @@ namespace PetAdoptionApp.DTOs.Auth
         public bool HasPets { get; set; }
         public string? LivingSpace { get; set; }
 
-        [Required, RegularExpression("User|Volonteer", ErrorMessage = "Mora biti korisnik ili volonter.")]
+        [Required, RegularExpression("User|Volunteer", ErrorMessage = "Mora biti korisnik ili volonter.")]
         public string Role { get; set; }
 
         public string[]? Skills { get; set; }
