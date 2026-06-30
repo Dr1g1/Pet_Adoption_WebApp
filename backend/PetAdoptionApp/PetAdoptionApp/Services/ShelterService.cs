@@ -42,7 +42,7 @@ namespace PetAdoptionApp.Services
                 description = createDto.description,
             };
 
-            // Izvrsavanje i rucno mapiranje:
+            //izvrsavanje i rucno mapiranje
             await using var session = _driver.AsyncSession();
             var result = await session.ExecuteWriteAsync(async tx =>
             {
@@ -175,7 +175,7 @@ namespace PetAdoptionApp.Services
 
         public async Task<bool> DeleteShelterAsync(string id)
         {
-            //DETACH DELETE - brisace cvor i sve relacije (veze) koje taj cvor ima sa drugim cvorovima.
+            //DETACH DELETE ce dda brise cvor i sve relacije koje taj cvor ima sa drugim cvorovima
             var query = @"
                 MATCH (s:Shelter {id: $id})
 

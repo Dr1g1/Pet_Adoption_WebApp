@@ -66,7 +66,7 @@ namespace PetAdoptionApp.Controllers
             }
         }
 
-        //vracanje informacija o trenutno ulogovanom korisniku:
+        //vracanje informacija o trenutnp ulogovanom korisniku
         [HttpGet("me")]
         [Authorize]
         public IActionResult Me()

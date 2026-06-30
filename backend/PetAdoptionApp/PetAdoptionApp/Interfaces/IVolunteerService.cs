@@ -12,5 +12,7 @@ namespace PetAdoptionApp.Interfaces
         Task<VolunteerDto?> UpdateAsync(string id, VolunteerUpdateDto dto);
         Task<bool> DeleteAsync(string id);
         Task<bool> AssignToShelterAsync(string volunteerId, string shelterId);
+        Task<bool> SetAdminAsync(string volunteerId, string callerShelterId, bool isAdmin);
+        Task<bool> RemoveFromShelterAsync(string volunteerId, string callerShelterId);
     }
 }

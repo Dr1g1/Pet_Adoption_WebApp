@@ -1,4 +1,4 @@
-﻿// Services/AnimalService.cs
+﻿
 using Neo4j.Driver;
 using PetAdoptionApp.Common;
 using PetAdoptionApp.DTOs.Animal;
@@ -89,18 +89,18 @@ namespace PetAdoptionApp.Services
             });
         }
 
-        public async Task<AnimalResponseDto?> GetAnimalByIdAsync(string animalId)
+        public async Task<AnimalDetailResponseDto?> GetAnimalByIdAsync(string animalId)
         {
             var query = @"
-                MATCH (a:Animal {id: $animalId})
-                RETURN a";
+                        MATCH (a:Animal {id: $animalId})
+                        RETURN a";
 
             await using var session = _driver.AsyncSession();
             return await session.ExecuteReadAsync(async tx =>
             {
                 var cursor = await tx.RunAsync(query, new { animalId });
                 if (!await cursor.FetchAsync()) return null;
-                return MapToResponse(cursor.Current["a"].As<INode>());
+                return MapToDetail(cursor.Current["a"].As<INode>());
             });
         }
 
@@ -251,6 +251,23 @@ namespace PetAdoptionApp.Services
             return true;
         }
 
+        public async Task<IEnumerable<AnimalResponseDto>> GetAllAvailableAnimalsAsync()
+        {
+            var query = @"
+                        MATCH (a:Animal)
+                        WHERE a.isAdopted = false
+                        RETURN a
+                        ORDER BY a.arrivedAt DESC";
+
+            await using var session = _driver.AsyncSession();
+            return await session.ExecuteReadAsync(async tx =>
+            {
+                var cursor = await tx.RunAsync(query);
+                var records = await cursor.ToListAsync();
+                return records.Select(r => MapToResponse(r["a"].As<INode>()));
+            });
+        }
+
         // MAPPING HELPERI 
 
         private static AnimalResponseDto MapToResponse(INode node)
@@ -271,7 +288,12 @@ namespace PetAdoptionApp.Services
                     node["isVaccinated"].As<string>()),
                 isSterilized = Enum.Parse<Enums.AnimalBoolean>(
                     node["isSterilized"].As<string>()),
-                primaryImgUrl = images.FirstOrDefault()
+                primaryImgUrl = images.FirstOrDefault(),
+                isAdopted = node.Properties.ContainsKey("isAdopted") && node["isAdopted"].As<bool>(),
+                species = node.Properties.ContainsKey("species") ? node["species"].As<string>() : "",
+                size = Enum.Parse<Enums.Size>(node["size"].As<string>()),
+                isGoodWithKids = Enum.Parse<Enums.AnimalBoolean>(node["isGoodWithKids"].As<string>()),
+                isGoodWithPets = Enum.Parse<Enums.AnimalBoolean>(node["isGoodWithPets"].As<string>()),
             };
         }
 
@@ -301,6 +323,135 @@ namespace PetAdoptionApp.Services
                     ? DateTime.Parse(node["arrivedAt"].As<string>()) : DateTime.UtcNow,
                 images = images
             };
+        }
+
+        public async Task<IEnumerable<AnimalResponseDto>> GetAllByShelterIncludingAdoptedAsync(string shelterId)
+        {
+            var query = @"
+                    MATCH (s:Shelter {id: $shelterId})<-[:HOUSED_IN]-(a:Animal)
+                    RETURN a
+                    ORDER BY a.isAdopted ASC, a.arrivedAt DESC";
+
+            await using var session = _driver.AsyncSession();
+            return await session.ExecuteReadAsync(async tx =>
+            {
+                var cursor = await tx.RunAsync(query, new { shelterId });
+                var records = await cursor.ToListAsync();
+                return records.Select(r => MapToResponse(r["a"].As<INode>()));
+            });
+        }
+
+        public async Task<AnimalDetailResponseDto?> UpdateAnimalAsync(string animalId, AnimalUpdateDto dto)
+        {
+            var setClauses = new List<string>();
+            var parameters = new Dictionary<string, object?> { ["animalId"] = animalId };
+
+            if (dto.Name != null)
+            { setClauses.Add("a.name = $name"); parameters["name"] = dto.Name; }
+            if (dto.Species != null)
+            { setClauses.Add("a.species = $species"); parameters["species"] = dto.Species; }
+            if (dto.Breed != null)
+            { setClauses.Add("a.breed = $breed"); parameters["breed"] = dto.Breed; }
+            if (dto.Age != null)
+            { setClauses.Add("a.age = $age"); parameters["age"] = dto.Age; }
+            if (dto.Gender != null)
+            { setClauses.Add("a.gender = $gender"); parameters["gender"] = dto.Gender.ToString(); }
+            if (dto.Size != null)
+            { setClauses.Add("a.size = $size"); parameters["size"] = dto.Size.ToString(); }
+            if (dto.IsVaccinated != null)
+            { setClauses.Add("a.isVaccinated = $isVaccinated"); parameters["isVaccinated"] = dto.IsVaccinated.ToString(); }
+            if (dto.IsSterilized != null)
+            { setClauses.Add("a.isSterilized = $isSterilized"); parameters["isSterilized"] = dto.IsSterilized.ToString(); }
+            if (dto.IsGoodWithKids != null)
+            { setClauses.Add("a.isGoodWithKids = $isGoodWithKids"); parameters["isGoodWithKids"] = dto.IsGoodWithKids.ToString(); }
+            if (dto.IsGoodWithPets != null)
+            { setClauses.Add("a.isGoodWithPets = $isGoodWithPets"); parameters["isGoodWithPets"] = dto.IsGoodWithPets.ToString(); }
+            if (dto.Description != null)
+            { setClauses.Add("a.description = $description"); parameters["description"] = dto.Description; }
+
+            // ako nema sta da se menja, vrati trenutno stanje
+            if (!setClauses.Any())
+            {
+                var current = await GetAnimalByIdAsync(animalId);
+                return current;
+            }
+
+            var query = $@"
+                    MATCH (a:Animal {{id: $animalId}})
+                    SET {string.Join(", ", setClauses)}
+                    RETURN a";
+
+            await using var session = _driver.AsyncSession();
+            return await session.ExecuteWriteAsync(async tx =>
+            {
+                var cursor = await tx.RunAsync(query, parameters);
+                if (!await cursor.FetchAsync()) return null;
+                return MapToDetail(cursor.Current["a"].As<INode>());
+            });
+        }
+
+        public async Task<bool> LikeAnimalAsync(string userId, string animalId)
+        {
+            var query = @"
+                MATCH (u:User {id: $userId})
+                MATCH (a:Animal {id: $animalId})
+                MERGE (u)-[:LIKED]->(a)
+                RETURN count(a) > 0 AS liked";
+
+            await using var session = _driver.AsyncSession();
+            return await session.ExecuteWriteAsync(async tx =>
+            {
+                var cursor = await tx.RunAsync(query, new { userId, animalId });
+                var record = await cursor.SingleAsync();
+                return record["liked"].As<bool>();
+            });
+        }
+
+        public async Task<bool> UnlikeAnimalAsync(string userId, string animalId)
+        {
+            var query = @"
+                MATCH (u:User {id: $userId})-[r:LIKED]->(a:Animal {id: $animalId})
+                DELETE r
+                RETURN count(r) >= 0 AS unliked";
+
+            await using var session = _driver.AsyncSession();
+            return await session.ExecuteWriteAsync(async tx =>
+            {
+                var cursor = await tx.RunAsync(query, new { userId, animalId });
+                var record = await cursor.SingleAsync();
+                return record["unliked"].As<bool>();
+            });
+        }
+
+        public async Task<IEnumerable<AnimalResponseDto>> GetLikedAnimalsAsync(string userId)
+        {
+            var query = @"
+                MATCH (u:User {id: $userId})-[:LIKED]->(a:Animal)
+                RETURN a
+                ORDER BY a.name";
+
+            await using var session = _driver.AsyncSession();
+            return await session.ExecuteReadAsync(async tx =>
+            {
+                var cursor = await tx.RunAsync(query, new { userId });
+                var records = await cursor.ToListAsync();
+                return records.Select(r => MapToResponse(r["a"].As<INode>()));
+            });
+        }
+
+        public async Task<int> GetLikeCountAsync(string animalId)
+        {
+            var query = @"
+                MATCH (:User)-[r:LIKED]->(a:Animal {id: $animalId})
+                RETURN count(r) AS likeCount";
+
+            await using var session = _driver.AsyncSession();
+            return await session.ExecuteReadAsync(async tx =>
+            {
+                var cursor = await tx.RunAsync(query, new { animalId });
+                var record = await cursor.SingleAsync();
+                return record["likeCount"].As<int>();
+            });
         }
     }
 }

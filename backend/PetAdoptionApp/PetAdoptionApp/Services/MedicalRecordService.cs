@@ -16,7 +16,7 @@ namespace PetAdoptionApp.Services
 
         public async Task<MedicalRecordResponseDto> CreateMedicalRecord(string animalId, MedicalRecordCreateDto dto)
         {
-            //kreiramo jedan medical record za jednu zivotinju ciji nam je id dat.
+            
             var newId = Guid.NewGuid().ToString();
             var query = @"
                 MATCH (a: Animal {id: $animalId})
@@ -52,7 +52,7 @@ namespace PetAdoptionApp.Services
 
         public async Task<bool> DeleteRecordAsync(string recordId)
         {
-            //izbrisi jedan record.
+            
             var query = @"
                 MATCH (mr: MedicalRecord {id: $recordId})
                 WITH mr, count(mr) > 0 AS exists
@@ -70,7 +70,7 @@ namespace PetAdoptionApp.Services
 
         public async Task<IEnumerable<MedicalRecordResponseDto>> GetMedicalRecordsForAnimal(string animalId)
         {
-            //vratiti sve medical records koje ima jedna zivotinja prema njenom id-ju.
+            
             await using var session = _driver.AsyncSession();
 
             return await session.ExecuteReadAsync(async x =>
@@ -86,7 +86,7 @@ namespace PetAdoptionApp.Services
             });
         }
 
-        //pomocna funkcija:
+        
         private MedicalRecordResponseDto MapNodeToMedRecResp(INode node)
         {
             return new MedicalRecordResponseDto

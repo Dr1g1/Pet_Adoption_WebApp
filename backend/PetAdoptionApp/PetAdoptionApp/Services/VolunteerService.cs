@@ -236,7 +236,6 @@ namespace PetAdoptionApp.Services
 
 
 
-        // HELPERI:
 
         private static VolunteerSummaryDto MapToSummary(INode node, string? shelterName) => new()
         {
@@ -290,5 +289,39 @@ namespace PetAdoptionApp.Services
                     ? shelterNode["rating"].As<float?>() : null
             }
         };
+
+        public async Task<bool> SetAdminAsync(string volunteerId, string callerShelterId, bool isAdmin)
+        {
+            var query = @"
+                            MATCH (v:Volunteer {id: $volunteerId})-[:VOLUNTEERS_AT]->(s:Shelter {id: $shelterId})
+                            SET v.isAdmin = $isAdmin
+                            RETURN count(v) > 0 AS updated";
+
+            await using var session = _driver.AsyncSession();
+            return await session.ExecuteWriteAsync(async tx =>
+            {
+                var cursor = await tx.RunAsync(query, new { volunteerId, shelterId = callerShelterId, isAdmin });
+                var record = await cursor.SingleAsync();
+                return record["updated"].As<bool>();
+            });
+        }
+
+        public async Task<bool> RemoveFromShelterAsync(string volunteerId, string callerShelterId)
+        {
+            var query = @"
+                        MATCH (v:Volunteer {id: $volunteerId})-[r:VOLUNTEERS_AT]->(s:Shelter {id: $shelterId})
+                        DELETE r
+                        WITH v
+                        SET v.isAdmin = false
+                        RETURN count(v) > 0 AS removed";
+
+            await using var session = _driver.AsyncSession();
+            return await session.ExecuteWriteAsync(async tx =>
+            {
+                var cursor = await tx.RunAsync(query, new { volunteerId, shelterId = callerShelterId });
+                var record = await cursor.SingleAsync();
+                return record["removed"].As<bool>();
+            });
+        }
     }
 }

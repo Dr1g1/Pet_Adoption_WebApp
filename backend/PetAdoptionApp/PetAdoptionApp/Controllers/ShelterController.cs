@@ -33,7 +33,7 @@ namespace PetAdoptionApp.Controllers
         public async Task<IActionResult> GetById(string id)
         {
             var result = await _shelterService.GetShelterByIdAsync(id);
-            if (result == null) return NotFound(); // vraca 404 ako azil ne postoji
+            if (result == null) return NotFound(); 
             return Ok(result);
         }
 
@@ -50,7 +50,7 @@ namespace PetAdoptionApp.Controllers
         {
             var success = await _shelterService.DeleteShelterAsync(id);
             if (!success) return NotFound();
-            return NoContent(); // vraca 204 - uspesno ali nema sadrzaj za povratak
+            return NoContent(); 
         }
     }
 }

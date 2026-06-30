@@ -26,7 +26,7 @@ namespace PetAdoptionApp.Controllers
         public async Task<IActionResult> DeleteMedicalRecord(string recordId)
         {
             var result = await _medicalRecordService.DeleteRecordAsync(recordId);
-            if (!result) return NotFound("Izvestaj sa ovom identifikacijom nije pronadjen");
+            if (!result) return NotFound("Izvestaj sa ovom identifikacijom nije pronadjem");
             return Ok(result);
         }
 
