@@ -1,6 +1,7 @@
 ﻿using PetAdoptionApp.DTOs.Shelter;
 using PetAdoptionApp.DTOs.MedicalRecord;
 using PetAdoptionApp.Common;
+
 namespace PetAdoptionApp.DTOs.Animal
 {
     public class AnimalDetailResponseDto

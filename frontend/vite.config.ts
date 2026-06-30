@@ -10,15 +10,15 @@ export default defineConfig({
   ],
   server: {
     proxy: {
-      // svaki pozizv na /api ide na nas c# backend
-      // tako izbegavamo CORS problem tokom razvoja
       '/api': {
         target: 'http://localhost:5266',
-        changeOrigin: true
+        changeOrigin: true,
+        secure: false
       },
       '/images': {
         target: 'http://localhost:5266',
-        changeOrigin: true
+        changeOrigin: true,
+        secure: false
       },
       '/hubs': {
         target: 'http://localhost:5266',

@@ -4,7 +4,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Link } from 'react-router-dom';
 import { useLogin } from '../../hooks/useAuth';
 
-// Validaciona shema — pravila za formu
 const schema = z.object({
     email: z.string()
         .min(1, 'Email je obavezan')
@@ -33,9 +32,8 @@ export function LoginPage() {
         <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
             <div className="w-full max-w-md">
 
-                {/* Logo */}
                 <div className="text-center mb-8">
-                    <span className="text-4xl">🐾</span>
+                    <span className="text-4xl"></span>
                     <h1 className="text-2xl font-bold text-gray-900 mt-2">
                         PetAdoption
                     </h1>
@@ -44,12 +42,10 @@ export function LoginPage() {
                     </p>
                 </div>
 
-                {/* Kartica */}
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
 
                     <form onSubmit={handleSubmit(onSubmit)} noValidate>
 
-                        {/* Email */}
                         <div className="mb-4">
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Email adresa
@@ -70,7 +66,6 @@ export function LoginPage() {
                             )}
                         </div>
 
-                        {/* Lozinka */}
                         <div className="mb-6">
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Lozinka
@@ -91,7 +86,6 @@ export function LoginPage() {
                             )}
                         </div>
 
-                        {/* Greška sa servera */}
                         {error && (
                             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                                 <p className="text-sm text-red-600">
@@ -100,7 +94,6 @@ export function LoginPage() {
                             </div>
                         )}
 
-                        {/* Submit */}
                         <button
                             type="submit"
                             disabled={isPending}
@@ -112,7 +105,6 @@ export function LoginPage() {
                         </button>
                     </form>
 
-                    {/* Link ka registraciji */}
                     <p className="text-sm text-gray-500 text-center mt-6">
                         Nemaš nalog?{' '}
                         <Link

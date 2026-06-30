@@ -16,7 +16,6 @@ export interface RegisterDto {
     hasPets: boolean;
     livingSpace?: string;
     role: 'User' | 'Volunteer';
-    //Volunteer-specificna polja:
     skills?: string[];
     availableDays?: string[];
     shelterId?: string;
@@ -25,8 +24,9 @@ export interface RegisterDto {
 export interface UserInfoDto {
     id: string;
     email: string;
-    role: 'User' | 'Volunteer' | 'Admin';
+    role: 'User' | 'Volunteer';
     shelterId?: string;
+    isAdmin?:boolean;
 }
 
 export interface AuthResponseDto {

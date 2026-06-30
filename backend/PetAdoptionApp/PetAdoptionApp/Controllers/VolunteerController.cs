@@ -19,7 +19,6 @@ namespace PetAdoptionApp.Controllers
         public async Task<IActionResult> GetAll()
             => Ok(await _service.GetAllAsync());
 
-        // GET api/volunteers?shelterId=abc123
         [HttpGet("by-shelter/{shelterId}")]
         public async Task<IActionResult> GetByShelter(string shelterId)
         {
@@ -63,6 +62,33 @@ namespace PetAdoptionApp.Controllers
         {
             var deleted = await _service.DeleteAsync(id);
             return deleted ? NoContent() : NotFound();
+        }
+
+        [HttpPatch("{volunteerId}/set-admin")]
+        public async Task<IActionResult> SetAdmin(string volunteerId, [FromBody] SetAdminDto dto)
+        {
+            //moze da pozove ovaj endpount samo ako je admin istog azila
+            var callerShelterId = User.FindFirst("shelterId")?.Value;
+            var callerIsAdmin = User.FindFirst("isAdmin")?.Value == "true";
+            if (callerShelterId == null || !callerIsAdmin)
+                return Forbid();
+
+            var result = await _service.SetAdminAsync(volunteerId, callerShelterId, dto.IsAdmin);
+            if (!result) return NotFound("Volonter nije pronađen ili nije u istom azilu");
+            return NoContent();
+        }
+
+        [HttpDelete("{volunteerId}/remove-from-shelter")]
+        public async Task<IActionResult> RemoveFromShelter(string volunteerId)
+        {
+            var callerShelterId = User.FindFirst("shelterId")?.Value;
+            var callerIsAdmin = User.FindFirst("isAdmin")?.Value == "true";
+            if (callerShelterId == null || !callerIsAdmin)
+                return Forbid();
+
+            var result = await _service.RemoveFromShelterAsync(volunteerId, callerShelterId);
+            if (!result) return NotFound("Volonter nije pronađen u tvom azilu");
+            return NoContent();
         }
     }
 }

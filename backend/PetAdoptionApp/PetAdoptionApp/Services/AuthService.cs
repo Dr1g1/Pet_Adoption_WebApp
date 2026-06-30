@@ -43,6 +43,7 @@ namespace PetAdoptionApp.Services
                                 RETURN u.id AS userId,
                                        u.passwordHash AS userPassword,
                                        u.role AS role,
+                                       u.isAdmin AS isAdmin,
                                        s.id AS shelterId",
                                 new { email = dto.Email });
                 if (!await pointer.FetchAsync()) return null;
@@ -52,6 +53,7 @@ namespace PetAdoptionApp.Services
                     Id = record["userId"].As<string>(),
                     PasswordHash = record["userPassword"].As<string>(),
                     Role = record["role"].As<string>(),
+                    IsAdmin = record["isAdmin"].As<bool?>() ?? false,
                     ShelterId = record["shelterId"].As<string>()
                 };
             });
@@ -59,11 +61,11 @@ namespace PetAdoptionApp.Services
                 throw new UnauthorizedAccessException("Pogresan email ili lozinka.");
             if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
                 throw new UnauthorizedAccessException("Pogresna lozinka");
-            return await GenerateResponseAsync(user.Id, dto.Email, user.Role, user.ShelterId);
+            return await GenerateResponseAsync(user.Id, dto.Email, user.Role, user.ShelterId, user.IsAdmin);
         }
 
         
-        private string GenerateJwtToken(string userId, string email,string role, string? shelterId, DateTime expiry)
+        private string GenerateJwtToken(string userId, string email,string role, string? shelterId, bool isAdmin, DateTime expiry)
         {
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_secret));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -71,8 +73,10 @@ namespace PetAdoptionApp.Services
             var claims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Sub, userId),
+                new Claim("userId", userId),
                 new Claim(JwtRegisteredClaimNames.Email, email),
                 new Claim(ClaimTypes.Role, role),
+                new Claim("isAdmin", isAdmin.ToString().ToLower()),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
@@ -94,14 +98,16 @@ namespace PetAdoptionApp.Services
             return await session.ExecuteReadAsync(async x =>
             {
                 var pointer = await x.RunAsync(@"
-                                MATCH(rt:RefreshToken {token: $token})
                                 MATCH (u:User {id: $id})
                                 RETURN u.id AS id,
                                        u.name AS name,
                                        u.surname AS surname,
                                        u.email AS email",
                                 new { id = userId });
-                await pointer.FetchAsync();
+
+                if (!await pointer.FetchAsync())
+                    throw new InvalidOperationException($"Korisnik {userId} nije pronadjen u GetUserInfo");
+
                 var record = pointer.Current;
                 return new UserInfoDto
                 {
@@ -109,8 +115,6 @@ namespace PetAdoptionApp.Services
                     Email = record["email"].As<string>(),
                     Role = role,
                     ShelterId = shelterId
-                    //Role = record["role"].As<string>(),
-                    //ShelterId = record["shelterId"].As<string>()
                 };
             });
         }
@@ -132,7 +136,7 @@ namespace PetAdoptionApp.Services
             if (emailExists)
                 throw new InvalidOperationException("Ovaj email se vec koristi");
 
-            var queryV = @"CREATE (v:Volunteer {
+            var queryV = @"CREATE (v:User:Volunteer {
                     id:           $id,
                     name:         $name,
                     surname:      $surname,
@@ -205,7 +209,7 @@ namespace PetAdoptionApp.Services
                 });
             }
             var shelterId = await GetVolunteerShelterId(newId);
-            return await GenerateResponseAsync(newId, dto.Email, dto.Role, shelterId);
+            return await GenerateResponseAsync(newId, dto.Email, dto.Role, shelterId, false);
         }
 
         public async Task<bool> RevokeTokenAsync(string refresh)
@@ -228,14 +232,15 @@ namespace PetAdoptionApp.Services
             {
                 var pointer = await x.RunAsync(@"
                                                 MATCH (rt:RefreshToken {token: $token})
-                                                MATCH (u:User {id: $rt.userId})
+                                                MATCH (u:User {id: rt.userId})
                                                 OPTIONAL MATCH (u)-[:VOLUNTEERS_AT]->(s:Shelter)
                                                 RETURN rt.userId AS userId,
                                                        rt.expiresAt AS expiresAt,
                                                        rt.isRevoked AS isRevoked,
-                                                       rt.email AS email,
-                                                       rt.role AS role,
-                                                       rt.id AS shelterId",
+                                                       u.email AS email,
+                                                       u.role AS role,
+                                                       u.isAdmin AS isAdmin,
+                                                       s.id AS shelterId",
                                                  new { token = refresh });
                 if (!await pointer.FetchAsync()) return null;
 
@@ -247,8 +252,8 @@ namespace PetAdoptionApp.Services
                     IsRevoked = record["isRevoked"].As<bool>(),
                     Email = record["email"].As<string>(),
                     Role = record["role"].As<string>(),
-                    ShelterId = record.Keys.Contains("shelterId") ?
-                                record["shelterId"].As<string>() : null
+                    IsAdmin = record["isAdmin"].As<bool?>() ?? false,
+                    ShelterId = record["shelterId"].As<string?>()
                 };
             });
             if (tokenData == null)
@@ -264,16 +269,18 @@ namespace PetAdoptionApp.Services
                 tokenData.UserId,
                 tokenData.Email,
                 tokenData.Role,
-                tokenData.ShelterId);
+                tokenData.ShelterId,
+                tokenData.IsAdmin);
         }
 
-        private async Task<AuthResponseDto> GenerateResponseAsync(string userId, string email, string role, string? shelterId)
+        private async Task<AuthResponseDto> GenerateResponseAsync(string userId, string email, string role, string? shelterId, bool isAdmin)
         {
             var accessTokenExpiry = DateTime.UtcNow.AddMinutes(_accessTokenExpiryMinutes);
-            var accessToken = GenerateJwtToken(userId, email, role, shelterId, accessTokenExpiry);
+            var accessToken = GenerateJwtToken(userId, email, role, shelterId, isAdmin, accessTokenExpiry);
             var refreshToken = await SaveRefreshToken(userId);
 
             var userInfo = await GetUserInfo(userId, role, shelterId);
+            userInfo.IsAdmin = isAdmin;
 
             return new AuthResponseDto
             {

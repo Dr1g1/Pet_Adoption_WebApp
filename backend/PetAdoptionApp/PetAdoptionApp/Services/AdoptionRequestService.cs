@@ -33,7 +33,7 @@ namespace PetAdoptionApp.Services
 
         public async Task<AdoptionRequestUserResponseDto> CreateAdoptionRequestAsync(string userId, AdoptionRequestUserCreateDto dto)
         {
-            //ovaj adoption request kreira korisnik kada hoce da usvoji neku zivotinju.
+            //ovaj adoption request kreira korisnik kad hoce da usvoji neku zivotinju
             var newId = Guid.NewGuid().ToString();
             var query = @"
                 MATCH (u:User {id:$userId})
@@ -140,7 +140,7 @@ namespace PetAdoptionApp.Services
 
         public async Task<bool> RejectRequestAsync(AdoptionRequestActionDto dto, string shelterId)
         {
-            //kada admin odbije zahtev koji je poslao korisnik.
+            //kada admin odbije zahtev koji je poslao korisnik
             var query = @"
                 MATCH (ar:AdoptionRequest {id:$requestId})-[:REVIEWED_BY]->(s:Shelter {id:$shelterId})
                 WHERE ar.status='Pending'
@@ -165,7 +165,7 @@ namespace PetAdoptionApp.Services
 
         public async Task<bool> ApprovedRequestAsync(AdoptionRequestActionDto dto, string shelterId)
         {
-            //funkcija kad se prihvati zahtev za usvajanje jedne zivotinje.
+            //funkcija kad se prihvati zahtev za usvajanje jedne zivotinje
             var query = @"
                 MATCH (ar:AdoptionRequest {id:$requestId})-[:REVIEWED_BY]->(s:Shelter {id:$shelterId})
                 WHERE ar.status='Pending'
@@ -193,6 +193,39 @@ namespace PetAdoptionApp.Services
                 });
                 var result = await pointer.SingleAsync();
                 return result["approved"].As<bool>();
+            });
+        }
+
+        public async Task<IEnumerable<AdoptionRequestReturnDto>> GetRequestsForUser(string userId)
+        {
+            var query = @"
+                            MATCH (u:User {id:$userId})-[:REQUESTED]->(ar:AdoptionRequest)-[:FOR]->(a:Animal)
+                            RETURN u, ar, a
+                            ORDER BY ar.createdAt DESC";
+            await using var session = _driver.AsyncSession();
+            return await session.ExecuteReadAsync(async x =>
+            {
+                var pointer = await x.RunAsync(query, new { userId });
+                var requests = new List<AdoptionRequestReturnDto>();
+
+                while (await pointer.FetchAsync())
+                {
+                    var ar = pointer.Current["ar"].As<INode>();
+                    var a = pointer.Current["a"].As<INode>();
+                    var u = pointer.Current["u"].As<INode>();
+
+                    requests.Add(new AdoptionRequestReturnDto
+                    {
+                        RequestId = ar["id"].As<string>(),
+                        UserId = u["id"].As<string>(),
+                        UserName = u["name"].As<string>(),
+                        AnimalId = a["id"].As<string>(),
+                        AnimalName = a["name"].As<string>(),
+                        Status = Enum.Parse<Enums.Status>(ar["status"].As<string>()),
+                        CreatedAt = DateTime.Parse(ar["createdAt"].As<string>())
+                    });
+                }
+                return requests;
             });
         }
     }

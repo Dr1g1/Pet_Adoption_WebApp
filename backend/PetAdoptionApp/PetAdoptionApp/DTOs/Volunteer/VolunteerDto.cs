@@ -9,7 +9,7 @@ namespace PetAdoptionApp.DTOs.Volunteer
         public bool IsActive { get; set; }
         public float? Rating { get; set; }
         public string[]? Skills { get; set; }
-        public string[]? AvailableDays { get; set; }  // enum → string za JSON
+        public string[]? AvailableDays { get; set; }  
         public DateTime? JoinedAt { get; set; }
         public ShelterDto? Shelter { get; set; }
     }

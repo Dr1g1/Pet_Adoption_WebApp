@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { useRegister } from '../../hooks/useAuth';
+import {isAxiosError} from 'axios';
 
 const schema = z.object({
     name: z.string().min(1, 'Ime je obavezno'),
@@ -24,7 +25,6 @@ const schema = z.object({
 
 type RegisterForm = z.infer<typeof schema>;
 
-// Helper komponenta za polje — da ne dupliramo kod
 function Field({
     label,
     error,
@@ -79,9 +79,8 @@ export function RegisterPage() {
         <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-10">
             <div className="w-full max-w-lg">
 
-                {/* Logo */}
                 <div className="text-center mb-8">
-                    <span className="text-4xl">🐾</span>
+                    <span className="text-4xl"></span>
                     <h1 className="text-2xl font-bold text-gray-900 mt-2">
                         Kreiraj nalog
                     </h1>
@@ -93,13 +92,11 @@ export function RegisterPage() {
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
                     <form onSubmit={handleSubmit(onSubmit)} noValidate>
 
-                        {/* Izbor uloge */}
                         <div className="mb-6">
                             <p className="text-sm font-medium text-gray-700 mb-2">
                                 Tip naloga
                             </p>
                             <div className="grid grid-cols-2 gap-3">
-                                {/* User dugme */}
                                 <button
                                     type="button"
                                     onClick={() => handleRoleChange('User')}
@@ -116,7 +113,6 @@ export function RegisterPage() {
                                     </div>
                                 </button>
 
-                                {/* Volunteer dugme */}
                                 <button
                                     type="button"
                                     onClick={() => handleRoleChange('Volunteer')}
@@ -133,11 +129,9 @@ export function RegisterPage() {
                                     </div>
                                 </button>
                             </div>
-                            {/* Skriveni input za react-hook-form */}
                             <input type="hidden" {...field('role')} />
                         </div>
 
-                        {/* Ime i prezime u redu */}
                         <div className="grid grid-cols-2 gap-4 mb-4">
                             <Field label="Ime" error={errors.name?.message}>
                                 <input
@@ -155,7 +149,6 @@ export function RegisterPage() {
                             </Field>
                         </div>
 
-                        {/* Email */}
                         <div className="mb-4">
                             <Field label="Email" error={errors.email?.message}>
                                 <input
@@ -167,7 +160,6 @@ export function RegisterPage() {
                             </Field>
                         </div>
 
-                        {/* Lozinke */}
                         <div className="grid grid-cols-2 gap-4 mb-4">
                             <Field label="Lozinka" error={errors.password?.message}>
                                 <input
@@ -187,7 +179,6 @@ export function RegisterPage() {
                             </Field>
                         </div>
 
-                        {/* Adresa */}
                         <div className="mb-4">
                             <Field label="Adresa" error={errors.address?.message}>
                                 <input
@@ -198,7 +189,6 @@ export function RegisterPage() {
                             </Field>
                         </div>
 
-                        {/* Telefon */}
                         <div className="mb-4">
                             <Field label="Telefon (opciono)" error={errors.phone?.message}>
                                 <input
@@ -209,7 +199,6 @@ export function RegisterPage() {
                             </Field>
                         </div>
 
-                        {/* Checkbox polja */}
                         <div className="mb-6">
                             <p className="text-sm font-medium text-gray-700 mb-2">
                                 O tebi
@@ -238,17 +227,16 @@ export function RegisterPage() {
                             </div>
                         </div>
 
-                        {/* Greška sa servera */}
                         {error && (
                             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                                 <p className="text-sm text-red-600">
-                                    {(error as any)?.response?.data?.message
-                                        ?? 'Greška pri registraciji. Pokušaj ponovo.'}
+                                    {isAxiosError<{ message: string }>(error)
+                                        ? error.response?.data?.message ?? 'Greška pri registraciji. Pokušaj ponovo.'
+                                        : 'Greška pri registraciji. Pokušaj ponovo.'}
                                 </p>
                             </div>
                         )}
 
-                        {/* Submit */}
                         <button
                             type="submit"
                             disabled={isPending}
