@@ -22,12 +22,12 @@ namespace PetAdoptionApp.Services
                 MATCH (v:Volunteer {id:$volunteerId})
                 MATCH (s:Shelter {id:$shelterId})
 
-                // odbij ako vec pripada nekom azilu
+                
                 OPTIONAL MATCH (v)-[:VOLUNTEERS_AT]->(existing:Shelter)
                 WITH v, s, existing
                 WHERE existing IS NULL
 
-                // odbij ako vec ima pending zahtev za ovaj azil
+                
                 OPTIONAL MATCH (v)-[:WANTS_TO_JOIN]->(dup:JoinRequest)-[:TO_SHELTER]->(s)
                 WHERE dup.status = 'Pending'
                 WITH v, s, dup
@@ -99,7 +99,6 @@ namespace PetAdoptionApp.Services
                 SET jr.status = 'Approved', jr.updatedAt = datetime()
                 MERGE (v)-[:VOLUNTEERS_AT]->(s)
 
-                // odbij sve ostale pending zahteve ovog volontera
                 WITH v, jr
                 OPTIONAL MATCH (v)-[:WANTS_TO_JOIN]->(other:JoinRequest)
                 WHERE other.id <> jr.id AND other.status = 'Pending'
